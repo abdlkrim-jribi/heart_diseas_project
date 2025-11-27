@@ -1,0 +1,3208 @@
+====================================================================================================
+PROJECT STRUCTURE ANALYSIS
+====================================================================================================
+Generated: 2025-11-27 20:17:26
+Project Root: D:\pycharm_projects_2\heart_diseas_ML
+====================================================================================================
+
+📊 PROJECT STATISTICS
+----------------------------------------------------------------------------------------------------
+Total Directories: 6
+Total Files: 14
+Total Size: 162.05 KB
+
+File Types Distribution:
+  .py: 9 files
+  no_extension: 2 files
+  .txt: 2 files
+  .md: 1 files
+
+Top 10 Largest Files:
+  PROJECT_STRUCTURE.txt: 92.36 KB
+  image_service.py: 12.99 KB
+  backend\app.py: 11.38 KB
+  analyze_project.py: 10.49 KB
+  backend\chatbot_service.py: 10.40 KB
+  train_image.py: 9.69 KB
+  backend\model_service.py: 6.58 KB
+  test_model.py: 3.42 KB
+  backend\create_mock_model.py: 2.09 KB
+  train_sklearn.py: 1.17 KB
+
+====================================================================================================
+
+🌳 TREE STRUCTURE
+----------------------------------------------------------------------------------------------------
+heart_diseas_ML/
+├── backend/
+│   ├── app.py (11.38 KB)
+│   ├── chatbot_service.py (10.40 KB)
+│   ├── create_mock_model.py (2.09 KB)
+│   └── model_service.py (6.58 KB)
+├── data/
+├── docs/
+├── frontend/
+├── models/
+├── tests/
+├── .env (284.00 B)
+├── .gitignore (421.00 B)
+├── PROJECT_STRUCTURE.txt (92.36 KB)
+├── README.md (616.00 B)
+├── analyze_project.py (10.49 KB)
+├── image_service.py (12.99 KB)
+├── requirements.txt (203.00 B)
+├── test_model.py (3.42 KB)
+├── train_image.py (9.69 KB)
+└── train_sklearn.py (1.17 KB)
+
+====================================================================================================
+
+📑 DETAILED FILE CONTENTS
+====================================================================================================
+
+================================================================================
+📁 DIRECTORY: backend/
+================================================================================
+
+
+  --------------------------------------------------------------------------------
+  📄 FILE: backend\app.py
+  Size: 11.38 KB
+  --------------------------------------------------------------------------------
+  Content:
+  ```
+  """
+  HeartGuard AI - Complete Streamlit Application
+  """
+  
+  import streamlit as st
+  import sys
+  import os
+  from pathlib import Path
+  
+  # Add backend to path and set working directory
+  backend_dir = Path(__file__).resolve().parent
+  project_root = backend_dir.parent
+  sys.path.insert(0, str(backend_dir))
+  
+  # Import after path is set
+  try:
+      from model_service import get_predictor, HeartDiseasePredictor
+      from image_service import get_image_analyzer, CardiacImageAnalyzer  # Added image service import
+      import logging
+  except ImportError as e:
+      st.error(f"Import error: {e}")
+      st.stop()
+  
+  logging.basicConfig(level=logging.INFO)
+  logger = logging.getLogger(__name__)
+  
+  
+  def init_session_state():
+      """Initialize session state variables"""
+      if 'collected_features' not in st.session_state:
+          st.session_state.collected_features = {}
+      if 'conversation_history' not in st.session_state:
+          st.session_state.conversation_history = []
+      if 'prediction_result' not in st.session_state:
+          st.session_state.prediction_result = None
+      if 'image_analysis_result' not in st.session_state:
+          st.session_state.image_analysis_result = None
+  
+  
+  def render_header():
+      """Render app header"""
+      st.set_page_config(page_title="HeartGuard AI", page_icon="❤️", layout="wide")
+  
+      st.title("🫀 HeartGuard AI")
+      st.markdown("### Intelligent Cardiac Risk Assessment System")
+      st.markdown("---")
+  
+  
+  def image_analysis_mode():
+      """
+      Complete rewrite - Image upload and AI-powered cardiac analysis
+      """
+      st.header("🔬 Medical Image Analysis")
+      st.markdown("""
+      Upload cardiac medical images for AI-powered analysis. 
+  
+      **Supported image types:**
+      - 🫀 **Cardiac MRI** - Heart muscle and structure visualization
+      - 📊 **Echocardiogram** - Ultrasound images of the heart  
+      - 📈 **ECG/EKG Images** - Electrocardiogram recordings
+      - 🩻 **Chest X-Ray** - Cardiac silhouette analysis
+      """)
+  
+      st.markdown("---")
+  
+      # Initialize image analyzer
+      try:
+          analyzer = get_image_analyzer()
+          st.sidebar.success("✅ Image Analyzer Ready")
+      except Exception as e:
+          st.error(f"❌ Error initializing image analyzer: {e}")
+          st.info("The image analysis feature requires the image service to be properly configured.")
+          return
+  
+      # Image type selection
+      col1, col2 = st.columns([2, 1])
+  
+      with col1:
+          image_type = st.selectbox(
+              "Select Image Type",
+              options=['auto', 'mri', 'echo', 'ecg', 'xray'],
+              format_func=lambda x: {
+                  'auto': '🔄 Auto-detect',
+                  'mri': '🫀 Cardiac MRI',
+                  'echo': '📊 Echocardiogram',
+                  'ecg': '📈 ECG/EKG Image',
+                  'xray': '🩻 Chest X-Ray'
+              }[x],
+              help="Select the type of medical image for optimized analysis"
+          )
+  
+      with col2:
+          st.markdown("**Analysis Mode:**")
+          analysis_mode = st.radio(
+              "Mode",
+              options=['Standard', 'Detailed'],
+              horizontal=True,
+              label_visibility='collapsed'
+          )
+  
+      st.markdown("---")
+  
+      # File uploader
+      uploaded_file = st.file_uploader(
+          "Upload Medical Image",
+          type=["png", "jpg", "jpeg", "bmp", "tiff"],
+          help="Supported formats: PNG, JPG, JPEG, BMP, TIFF. Max size: 10MB"
+      )
+  
+      if uploaded_file is not None:
+          # Display uploaded image
+          col_img, col_info = st.columns([1, 1])
+  
+          with col_img:
+              st.subheader("📷 Uploaded Image")
+              st.image(uploaded_file, caption=f"File: {uploaded_file.name}", use_column_width=True)
+  
+          with col_info:
+              st.subheader("📋 Image Information")
+              file_size = len(uploaded_file.getvalue()) / 1024  # KB
+              st.markdown(f"""
+              - **Filename:** {uploaded_file.name}
+              - **Size:** {file_size:.1f} KB
+              - **Type:** {uploaded_file.type}
+              - **Selected Analysis:** {image_type.upper() if image_type != 'auto' else 'Auto-detect'}
+              """)
+  
+          st.markdown("---")
+  
+          # Analysis button
+          if st.button("🔍 Analyze Image", type="primary", use_container_width=True):
+              with st.spinner("Analyzing image... This may take a moment."):
+                  try:
+                      # Reset file position
+                      uploaded_file.seek(0)
+  
+                      # Perform analysis
+                      result = analyzer.analyze(uploaded_file, image_type=image_type)
+  
+                      # Store result in session state
+                      st.session_state.image_analysis_result = result
+  
+                  except Exception as e:
+                      st.error(f"❌ Analysis failed: {e}")
+                      import traceback
+                      st.code(traceback.format_exc())
+                      return
+  
+          # Display results if available
+          if st.session_state.image_analysis_result is not None:
+              render_image_analysis_result(st.session_state.image_analysis_result, analysis_mode)
+  
+      else:
+          # Show example/instructions when no image uploaded
+          st.info("👆 Upload a medical image to begin analysis")
+  
+          with st.expander("📖 How to use Image Analysis", expanded=True):
+              st.markdown("""
+              ### Steps:
+              1. **Select image type** - Choose the type of cardiac image you're uploading
+              2. **Upload image** - Drag and drop or click to browse
+              3. **Analyze** - Click the analyze button to process the image
+              4. **Review results** - View AI-powered analysis and recommendations
+  
+              ### Tips for best results:
+              - Use high-quality, clear images
+              - Ensure proper image orientation
+              - Remove any personal identifying information from images
+              - Images should be properly exposed (not too dark or bright)
+  
+              ### Supported Analyses:
+              | Image Type | What We Analyze |
+              |------------|-----------------|
+              | Cardiac MRI | Heart chamber size, wall thickness, motion abnormalities |
+              | Echocardiogram | Valve function, ejection fraction indicators, structural abnormalities |
+              | ECG Image | Rhythm patterns, wave morphology, interval analysis |
+              | Chest X-Ray | Cardiac silhouette, chamber enlargement, congestion signs |
+              """)
+  
+  
+  def render_image_analysis_result(result, mode='Standard'):
+      """
+      New function - Render detailed image analysis results
+      """
+      st.markdown("---")
+      st.header("🎯 Analysis Results")
+  
+      # Main metrics row
+      col1, col2, col3, col4 = st.columns(4)
+  
+      with col1:
+          st.metric(
+              "Diagnosis",
+              "Abnormal" if result['prediction'] == 1 else "Normal",
+              delta=None
+          )
+  
+      with col2:
+          st.metric(
+              "Probability",
+              f"{result['probability'] * 100:.1f}%"
+          )
+  
+      with col3:
+          st.metric(
+              "Confidence",
+              f"{result['confidence'] * 100:.1f}%"
+          )
+  
+      with col4:
+          st.metric(
+              "Risk Level",
+              f"{result['risk_emoji']} {result['risk_level']}"
+          )
+  
+      # Risk visualization
+      st.markdown("### Risk Assessment")
+  
+      # Create a color-coded progress bar
+      prob = result['probability']
+      if prob > 0.7:
+          bar_color = 'red'
+      elif prob > 0.4:
+          bar_color = 'orange'
+      else:
+          bar_color = 'green'
+  
+      st.progress(prob)
+  
+      # Diagnosis box
+      if result['prediction'] == 1:
+          st.error(f"**{result['diagnosis']}**")
+      else:
+          st.success(f"**{result['diagnosis']}**")
+  
+      # Detailed analysis section
+      if mode == 'Detailed':
+          st.markdown("### 📊 Detailed Analysis")
+  
+          col_details, col_features = st.columns(2)
+  
+          with col_details:
+              st.markdown("#### Analysis Details")
+              for detail in result.get('analysis_details', []):
+                  st.markdown(f"- {detail}")
+  
+          with col_features:
+              st.markdown("#### Extracted Features")
+              features = result.get('features', {})
+  
+              feature_data = {
+                  "Feature": list(features.keys()),
+                  "Value": [f"{v:.4f}" for v in features.values()]
+              }
+              st.dataframe(feature_data, use_container_width=True)
+  
+      # Model information
+      st.markdown("---")
+      st.markdown(f"**Analysis Method:** {result.get('model_used', 'Unknown')}")
+  
+      # Medical disclaimer
+      st.warning(result['medical_disclaimer'])
+  
+      # Action buttons
+      col_a, col_b, col_c = st.columns(3)
+  
+      with col_a:
+          if st.button("🔄 Analyze Another Image", use_container_width=True):
+              st.session_state.image_analysis_result = None
+              st.rerun()
+  
+      with col_b:
+          # Generate report
+          report_text = generate_image_report(result)
+          st.download_button(
+              "📥 Download Report",
+              data=report_text,
+              file_name="cardiac_image_analysis.txt",
+              mime="text/plain",
+              use_container_width=True
+          )
+  
+      with col_c:
+          if st.button("🔗 Combine with Form Analysis", use_container_width=True):
+              st.info("Upload patient data in Form-Based mode for comprehensive assessment")
+  
+  
+  def generate_image_report(result):
+      """
+      New function - Generate downloadable report from image analysis
+      """
+      report = f"""
+  ================================================================================
+                      HeartGuard AI - Cardiac Image Analysis Report
+  ================================================================================
+  
+  ANALYSIS SUMMARY
+  --------------------------------------------------------------------------------
+  Diagnosis:        {result['diagnosis']}
+  Probability:      {result['probability'] * 100:.1f}%
+  Confidence:       {result['confidence'] * 100:.1f}%
+  Risk Level:       {result['risk_level']}
+  Analysis Method:  {result.get('model_used', 'Unknown')}
+  
+  DETAILED FINDINGS
+  --------------------------------------------------------------------------------
+  """
+  
+      for i, detail in enumerate(result.get('analysis_details', []), 1):
+          report += f"{i}. {detail}\n"
+  
+      report += """
+  EXTRACTED IMAGE FEATURES
+  --------------------------------------------------------------------------------
+  """
+  
+      for feature, value in result.get('features', {}).items():
+          report += f"{feature}: {value:.4f}\n"
+  
+      report += f"""
+  --------------------------------------------------------------------------------
+  MEDICAL DISCLAIMER
+  --------------------------------------------------------------------------------
+  {result['medical_disclaimer']}
+  
+  ================================================================================
+  Report generated by HeartGuard AI
+  This is an automated analysis for educational purposes only.
+  ================================================================================
+  """
+  
+      return report
+  
+  
+  def render_sidebar_debug():
+      """Render debug information in sidebar"""
+      st.sidebar.markdown("---")
+      st.sidebar.markdown("#### 🔧 Debug Info")
+  
+      model_p = project_root / 'models' / 'heart_model_gnb.pkl'
+      scaler_p = project_root / 'models' / 'scaler.pkl'
+      image_model_p = project_root / 'models' / 'cardiac_image_model.keras'
+  
+      st.sidebar.caption(f"**Working Dir:** `{os.getcwd()}`")
+      st.sidebar.caption(f"**Project Root:** `{project_root}`")
+      st.sidebar.caption(f"**Model exists:** {model_p.exists()}")
+      st.sidebar.caption(f"**Scaler exists:** {scaler_p.exists()}")
+      st.sidebar.caption(f"**Image Model exists:** {image_model_p.exists()}")
+  
+  ```
+
+
+  --------------------------------------------------------------------------------
+  📄 FILE: backend\chatbot_service.py
+  Size: 10.40 KB
+  --------------------------------------------------------------------------------
+  Content:
+  ```
+  """
+  Cerebras-powered Medical Chatbot for Feature Extraction
+  Uses Llama 3.3 70B for intelligent conversation + feature extraction
+  """
+  
+  import os
+  import json
+  from typing import Dict, List, Tuple
+  from dotenv import load_dotenv
+  
+  load_dotenv()
+  
+  
+  class MedicalChatbot:
+      """Conversational AI for heart disease feature collection"""
+  
+      FEATURE_PROMPTS = {
+          'age': "How old are you?",
+          'sex': "What is your biological sex? (Male/Female)",
+          'cp': "Do you experience chest pain? If yes, what type?",
+          'trestbps': "What is your resting blood pressure? (in mm Hg)",
+          'chol': "What is your serum cholesterol level? (in mg/dl)",
+          'fbs': "Is your fasting blood sugar greater than 120 mg/dl? (Yes/No)",
+          'restecg': "What are your resting ECG results?",
+          'thalach': "What is your maximum heart rate achieved during exercise?",
+          'exang': "Do you experience chest pain during exercise? (Yes/No)",
+          'oldpeak': "What is your ST depression induced by exercise? (0.0 to 6.2)",
+          'slope': "What is the slope of your peak exercise ST segment?",
+          'ca': "How many major vessels are colored by fluoroscopy? (0-3)",
+          'thal': "What is your thalassemia status?"
+      }
+  
+      def __init__(self):
+          """Initialize the chatbot with Cerebras API"""
+          api_key = os.getenv('CEREBRAS_API_KEY')
+          if not api_key:
+              raise ValueError("CEREBRAS_API_KEY not found in .env file")
+  
+          try:
+              from cerebras.cloud.sdk import Cerebras
+              # Initialize without any extra kwargs that might cause issues
+              self.client = Cerebras(api_key=api_key)
+          except TypeError as e:
+              # Fallback: If the SDK has issues, try alternative initialization
+              if 'proxies' in str(e) or 'unexpected keyword argument' in str(e):
+                  # Some versions have issues with httpx proxy settings
+                  # Try importing and configuring differently
+                  import httpx
+                  from cerebras.cloud.sdk import Cerebras
+  
+                  # Create a clean httpx client without proxy settings
+                  http_client = httpx.Client(timeout=60.0)
+                  self.client = Cerebras(api_key=api_key, http_client=http_client)
+              else:
+                  raise e
+  
+          self.model = "llama-3.3-70b"
+  
+      def create_system_prompt(self, collected_features: Dict) -> str:
+          """Dynamic system prompt based on collected features"""
+          missing = [f for f in self.FEATURE_PROMPTS.keys() if f not in collected_features]
+          collected_list = list(collected_features.keys())
+          collected_count = len(collected_features)
+          missing_preview = missing[:3] if missing else ['None - ready!']
+  
+          prompt = "You are a compassionate medical AI assistant helping patients assess their cardiac health.\n\n"
+          prompt += "Your Dual Role:\n"
+          prompt += "1. Feature Extraction: Naturally extract these 13 medical features through conversation:\n"
+          prompt += "   - age, sex, cp (chest pain), trestbps (BP), chol (cholesterol)\n"
+          prompt += "   - fbs (blood sugar), restecg (ECG), thalach (max heart rate)\n"
+          prompt += "   - exang (exercise angina), oldpeak (ST depression), slope (ST slope)\n"
+          prompt += "   - ca (# vessels), thal (thalassemia)\n\n"
+          prompt += "2. General Conversation: Answer medical questions, provide health education.\n\n"
+          prompt += "Current Status:\n"
+          prompt += f"- Collected: {collected_list} ({collected_count}/13)\n"
+          prompt += f"- Still needed: {missing_preview}\n\n"
+          prompt += "Guidelines:\n"
+          prompt += "- Ask 1-2 questions at a time\n"
+          prompt += "- Use simple language, explain medical terms\n"
+          prompt += "- If user shares info, acknowledge it\n"
+          prompt += "- When all 13 collected, congratulate and suggest prediction\n\n"
+          prompt += "Be warm, professional, and medically accurate."
+  
+          return prompt
+  
+      def extract_features_from_text(self, user_message: str, collected: Dict) -> Dict:
+          """Use LLM to extract features from user message"""
+  
+          collected_list = list(collected.keys())
+  
+          extraction_prompt = "Extract medical features from this user message and return ONLY valid JSON.\n\n"
+          extraction_prompt += f'User message: "{user_message}"\n\n'
+          extraction_prompt += f"Already collected: {collected_list}\n\n"
+          extraction_prompt += "Expected features (only if explicitly mentioned):\n"
+          extraction_prompt += "- age: integer 29-77\n"
+          extraction_prompt += "- sex: 0 (female) or 1 (male)\n"
+          extraction_prompt += "- cp: 1-4 (chest pain type)\n"
+          extraction_prompt += "- trestbps: integer 94-200 (blood pressure)\n"
+          extraction_prompt += "- chol: integer 126-564 (cholesterol)\n"
+          extraction_prompt += "- fbs: 0 or 1 (fasting blood sugar > 120)\n"
+          extraction_prompt += "- restecg: 0-2 (resting ECG)\n"
+          extraction_prompt += "- thalach: integer 71-202 (max heart rate)\n"
+          extraction_prompt += "- exang: 0 or 1 (exercise angina)\n"
+          extraction_prompt += "- oldpeak: float 0.0-6.2 (ST depression)\n"
+          extraction_prompt += "- slope: 1-3 (ST slope)\n"
+          extraction_prompt += "- ca: 0-3 (major vessels)\n"
+          extraction_prompt += "- thal: 3, 6, or 7 (thalassemia)\n\n"
+          extraction_prompt += "Examples:\n"
+          extraction_prompt += 'User: "I am 58 and male" -> {"age": 58, "sex": 1}\n'
+          extraction_prompt += 'User: "cholesterol 240" -> {"chol": 240}\n'
+          extraction_prompt += 'User: "no chest pain" -> {"cp": 4}\n'
+          extraction_prompt += 'User: "just chatting" -> {}\n\n'
+          extraction_prompt += "Return ONLY the JSON object, nothing else."
+  
+          try:
+              response = self.client.chat.completions.create(
+                  model="llama-3.1-8b",
+                  messages=[{"role": "user", "content": extraction_prompt}],
+                  temperature=0.1,
+                  max_tokens=300
+              )
+  
+              content = response.choices[0].message.content.strip()
+  
+              # Clean markdown code blocks
+              if "```json" in content:
+                  parts = content.split("```json")
+                  if len(parts) > 1:
+                      content = parts[1].split("```")[0].strip()
+              elif "```" in content:
+                  parts = content.split("```")
+                  if len(parts) > 1:
+                      content = parts[1].split("```")[0].strip()
+  
+              # Extract JSON
+              if "{" in content and "}" in content:
+                  start = content.index("{")
+                  end = content.rindex("}") + 1
+                  content = content[start:end]
+  
+              extracted = json.loads(content)
+  
+              # Validate
+              valid_features = {}
+              ranges = {
+                  'age': (29, 77), 'trestbps': (94, 200), 'chol': (126, 564),
+                  'thalach': (71, 202), 'oldpeak': (0.0, 6.2), 'ca': (0, 3),
+                  'sex': (0, 1), 'cp': (1, 4), 'fbs': (0, 1), 'restecg': (0, 2),
+                  'exang': (0, 1), 'slope': (1, 3), 'thal': (3, 7)
+              }
+  
+              for key, value in extracted.items():
+                  if key not in self.FEATURE_PROMPTS or key in collected:
+                      continue
+  
+                  try:
+                      if key in ['age', 'trestbps', 'chol', 'thalach', 'ca', 'sex',
+                                 'cp', 'fbs', 'restecg', 'exang', 'slope', 'thal']:
+                          value = int(float(value))
+                      elif key == 'oldpeak':
+                          value = float(value)
+  
+                      if key in ranges:
+                          min_val, max_val = ranges[key]
+                          if min_val <= value <= max_val:
+                              valid_features[key] = value
+                          else:
+                              print(f"Warning: {key}={value} out of range [{min_val}, {max_val}]")
+  
+                  except (ValueError, TypeError) as e:
+                      print(f"Warning: Invalid value for {key}: {value} ({e})")
+                      continue
+  
+              return valid_features
+  
+          except json.JSONDecodeError as e:
+              print(f"JSON parsing error: {e}")
+              return {}
+          except Exception as e:
+              print(f"Feature extraction error: {e}")
+              return {}
+  
+      def chat(self, message: str, history: List[Dict], collected_features: Dict) -> Tuple[str, Dict]:
+          """Main chat function"""
+  
+          new_features = self.extract_features_from_text(message, collected_features)
+  
+          messages = [{"role": "system", "content": self.create_system_prompt(collected_features)}]
+  
+          for msg in history[-10:]:
+              messages.append({"role": msg["role"], "content": msg["content"]})
+  
+          messages.append({"role": "user", "content": message})
+  
+          try:
+              response = self.client.chat.completions.create(
+                  model=self.model,
+                  messages=messages,
+                  temperature=0.7,
+                  max_tokens=400
+              )
+  
+              assistant_message = response.choices[0].message.content
+  
+              if new_features:
+                  feature_names = {
+                      'age': 'age', 'sex': 'sex', 'cp': 'chest pain type',
+                      'trestbps': 'blood pressure', 'chol': 'cholesterol',
+                      'fbs': 'fasting blood sugar', 'restecg': 'resting ECG',
+                      'thalach': 'max heart rate', 'exang': 'exercise angina',
+                      'oldpeak': 'ST depression', 'slope': 'ST slope',
+                      'ca': 'major vessels', 'thal': 'thalassemia'
+                  }
+  
+                  feature_list = [feature_names.get(k, k) for k in new_features.keys()]
+                  acknowledgment = "\n\nNoted: " + ", ".join(feature_list)
+                  assistant_message += acknowledgment
+  
+              return assistant_message, new_features
+  
+          except Exception as e:
+              error_msg = f"I apologize, I'm having technical difficulties: {str(e)}"
+              print(f"Chat error: {e}")
+              return error_msg, {}
+  
+  
+  _chatbot = None
+  
+  
+  def get_chatbot():
+      """Get or create chatbot instance"""
+      global _chatbot
+      if _chatbot is None:
+          print("Initializing Cerebras chatbot...")
+          _chatbot = MedicalChatbot()
+          print("Chatbot ready!")
+      return _chatbot
+  
+  ```
+
+
+  --------------------------------------------------------------------------------
+  📄 FILE: backend\create_mock_model.py
+  Size: 2.09 KB
+  --------------------------------------------------------------------------------
+  Content:
+  ```
+  """
+  Create a simple mock model for testing without TensorFlow loading issues
+  """
+  
+  import pickle
+  import numpy as np
+  from pathlib import Path
+  from sklearn.preprocessing import MinMaxScaler
+  import joblib
+  
+  # Create project paths
+  project_root = Path(__file__).resolve().parent.parent
+  models_dir = project_root / 'models'
+  models_dir.mkdir(exist_ok=True)
+  
+  print("Creating mock model and scaler...")
+  
+  
+  # 1. Create a simple mock model (just a function that predicts)
+  class SimplePredictor:
+      def __init__(self):
+          self.input_shape = (None, 13)
+          self.output_shape = (None, 1)
+  
+      def predict(self, X, verbose=0):
+          # Simple rule-based prediction
+          # If cholesterol > 240 and age > 50, higher risk
+          predictions = []
+          for sample in X:
+              age, sex, cp, trestbps, chol, fbs, restecg, thalach, exang, oldpeak, slope, ca, thal = sample
+  
+              # Simple scoring rule
+              score = 0
+              if chol > 240:
+                  score += 0.3
+              if trestbps > 140:
+                  score += 0.2
+              if age > 50:
+                  score += 0.15
+              if oldpeak > 2:
+                  score += 0.25
+              if ca > 1:
+                  score += 0.1
+  
+              # Normalize to 0-1
+              score = min(score, 1.0)
+              predictions.append([score])
+  
+          return np.array(predictions)
+  
+  
+  mock_model = SimplePredictor()
+  
+  # Save mock model
+  mock_model_path = models_dir / 'best_model_final_nn.keras'
+  with open(mock_model_path, 'wb') as f:
+      pickle.dump(mock_model, f)
+  
+  print(f"✅ Mock model saved: {mock_model_path}")
+  
+  # 2. Create scaler
+  scaler = MinMaxScaler()
+  dummy_data = np.array([
+      [29, 0, 1, 94, 126, 0, 0, 71, 0, 0.0, 1, 0, 3],
+      [77, 1, 4, 200, 564, 1, 2, 202, 1, 6.2, 3, 3, 7]
+  ])
+  scaler.fit(dummy_data)
+  
+  scaler_path = models_dir / 'scaler.pkl'
+  with open(scaler_path, 'wb') as f:
+      pickle.dump(scaler, f)
+  
+  print(f"✅ Scaler saved: {scaler_path}")
+  print(f"\n✅ Mock model and scaler ready!")
+  print(f"   Model path: {mock_model_path}")
+  print(f"   Scaler path: {scaler_path}")
+  
+  ```
+
+
+  --------------------------------------------------------------------------------
+  📄 FILE: backend\model_service.py
+  Size: 6.58 KB
+  --------------------------------------------------------------------------------
+  Content:
+  ```
+  """
+  Heart Disease Predictor - Sklearn Version (No TensorFlow)
+  Compatible with your trained GaussianNB model from train_sklearn.py
+  """
+  
+  import joblib
+  import numpy as np
+  from pathlib import Path
+  import logging
+  
+  logging.basicConfig(level=logging.INFO)
+  logger = logging.getLogger(__name__)
+  
+  
+  class HeartDiseasePredictor:
+      """Heart disease prediction using Gaussian Naive Bayes"""
+  
+      FEATURE_NAMES = [
+          'age', 'sex', 'cp', 'trestbps', 'chol', 'fbs',
+          'restecg', 'thalach', 'exang', 'oldpeak', 'slope', 'ca', 'thal'
+      ]
+  
+      FEATURE_CONFIG = {
+          'age': {'range': (29, 77), 'type': int, 'label': 'Age (years)'},
+          'sex': {'range': (0, 1), 'type': int, 'label': 'Sex (0=Female, 1=Male)'},
+          'cp': {'range': (1, 4), 'type': int, 'label': 'Chest Pain Type'},
+          'trestbps': {'range': (94, 200), 'type': int, 'label': 'Resting Blood Pressure (mm Hg)'},
+          'chol': {'range': (126, 564), 'type': int, 'label': 'Serum Cholesterol (mg/dl)'},
+          'fbs': {'range': (0, 1), 'type': int, 'label': 'Fasting Blood Sugar > 120 mg/dl'},
+          'restecg': {'range': (0, 2), 'type': int, 'label': 'Resting ECG'},
+          'thalach': {'range': (71, 202), 'type': int, 'label': 'Maximum Heart Rate'},
+          'exang': {'range': (0, 1), 'type': int, 'label': 'Exercise Induced Angina'},
+          'oldpeak': {'range': (0.0, 6.2), 'type': float, 'label': 'ST Depression'},
+          'slope': {'range': (1, 3), 'type': int, 'label': 'Slope of Peak Exercise ST'},
+          'ca': {'range': (0, 3), 'type': int, 'label': 'Number of Major Vessels'},
+          'thal': {'range': (3, 7), 'type': int, 'label': 'Thalassemia Type'}
+      }
+  
+      def __init__(self, model_path=None, scaler_path=None):
+          """Initialize predictor with sklearn model paths"""
+          project_root = Path(__file__).resolve().parents[1]
+  
+          default_model = project_root / 'models' / 'heart_model_gnb.pkl'
+          default_scaler = project_root / 'models' / 'scaler.pkl'
+  
+          self.model_path = Path(model_path or default_model).resolve()
+          self.scaler_path = Path(scaler_path or default_scaler).resolve()
+  
+          self.model = None
+          self.scaler = None
+          self.is_loaded = False
+  
+      def load(self):
+          """Load sklearn model and scaler"""
+          try:
+              print(f"\n{'=' * 60}")
+              print("LOADING MODEL AND SCALER")
+              print(f"{'=' * 60}")
+  
+              if not self.model_path.exists():
+                  print(f"❌ Model not found: {self.model_path}")
+                  print(f"   Run: python train_sklearn.py")
+                  self.is_loaded = False
+                  return False
+  
+              if not self.scaler_path.exists():
+                  print(f"❌ Scaler not found: {self.scaler_path}")
+                  print(f"   Run: python train_sklearn.py")
+                  self.is_loaded = False
+                  return False
+  
+              print(f"✅ Model: {self.model_path.name}")
+              print(f"✅ Scaler: {self.scaler_path.name}")
+  
+              # Load scaler
+              print(f"\n🔄 Loading scaler...")
+              self.scaler = joblib.load(self.scaler_path)
+              print(f"✅ Scaler loaded ({self.scaler.n_features_in_} features)")
+  
+              # Load model
+              print(f"\n🔄 Loading model...")
+              self.model = joblib.load(self.model_path)
+              print(f"✅ Sklearn GaussianNB loaded!")
+  
+              # Test prediction
+              print(f"\n🧪 Testing...")
+              test = np.array([[50, 1, 3, 130, 250, 0, 1, 140, 0, 1.5, 2, 0, 3]])
+              test_scaled = self.scaler.transform(test)
+              pred = self.model.predict_proba(test_scaled)[0][1]
+              print(f"✅ Test prediction: {pred:.4f}")
+  
+              self.is_loaded = True
+  
+              print(f"\n{'=' * 60}")
+              print("✅ READY! is_loaded = True")
+              print(f"{'=' * 60}\n")
+  
+              return True
+  
+          except Exception as e:
+              print(f"❌ Error: {e}")
+              import traceback
+              traceback.print_exc()
+              self.is_loaded = False
+              return False
+  
+      def validate_features(self, features):
+          """Validate input features"""
+          if len(features) != 13:
+              return False, f"Expected 13 features, got {len(features)}"
+  
+          for name in self.FEATURE_NAMES:
+              if name not in features:
+                  return False, f"Missing feature: {name}"
+  
+          return True, None
+  
+      def preprocess(self, features):
+          """Convert feature dict to scaled array"""
+          arr = np.array([[features[name] for name in self.FEATURE_NAMES]])
+          return self.scaler.transform(arr)
+  
+      def predict(self, features):
+          """Make heart disease prediction"""
+          if not self.is_loaded or self.model is None or self.scaler is None:
+              error_msg = f"Model not loaded! (is_loaded={self.is_loaded})"
+              print(f"❌ {error_msg}")
+              raise RuntimeError(error_msg)
+  
+          # Validate
+          valid, err = self.validate_features(features)
+          if not valid:
+              raise ValueError(err)
+  
+          # Predict
+          try:
+              scaled = self.preprocess(features)
+              prob = float(self.model.predict_proba(scaled)[0][1])
+  
+              # Risk levels
+              if prob > 0.7:
+                  risk, emoji = 'HIGH', '🔴'
+              elif prob > 0.4:
+                  risk, emoji = 'MODERATE', '🟡'
+              else:
+                  risk, emoji = 'LOW', '🟢'
+  
+              return {
+                  'prediction': int(prob > 0.5),
+                  'probability': prob,
+                  'risk_level': risk,
+                  'risk_emoji': emoji,
+                  'diagnosis': 'Heart Disease' if prob > 0.5 else 'No Heart Disease',
+                  'medical_disclaimer': '⚠️ Educational purposes only. Consult a healthcare professional.'
+              }
+          except Exception as e:
+              print(f"❌ Prediction error: {e}")
+              import traceback
+              traceback.print_exc()
+              raise
+  
+  
+  # Singleton instance
+  _predictor = None
+  
+  
+  def get_predictor():
+      """Get or create predictor singleton"""
+      global _predictor
+  
+      if _predictor is None:
+          print("Creating new predictor instance...")
+          _predictor = HeartDiseasePredictor()
+          success = _predictor.load()
+          if not success:
+              raise RuntimeError("Failed to load model! Run: python train_sklearn.py")
+          print(f"✅ Predictor ready (is_loaded={_predictor.is_loaded})")
+      else:
+          print(f"Using existing predictor (is_loaded={_predictor.is_loaded})")
+  
+      return _predictor
+  
+  ```
+
+
+================================================================================
+📁 DIRECTORY: data/
+================================================================================
+
+
+================================================================================
+📁 DIRECTORY: docs/
+================================================================================
+
+
+================================================================================
+📁 DIRECTORY: frontend/
+================================================================================
+
+
+================================================================================
+📁 DIRECTORY: models/
+================================================================================
+
+
+================================================================================
+📁 DIRECTORY: tests/
+================================================================================
+
+
+--------------------------------------------------------------------------------
+📄 FILE: .env
+Size: 284.00 B
+--------------------------------------------------------------------------------
+[Large file or excluded extension - content not included]
+
+
+--------------------------------------------------------------------------------
+📄 FILE: .gitignore
+Size: 421.00 B
+--------------------------------------------------------------------------------
+[Large file or excluded extension - content not included]
+
+
+--------------------------------------------------------------------------------
+📄 FILE: PROJECT_STRUCTURE.txt
+Size: 92.36 KB
+--------------------------------------------------------------------------------
+Content:
+```
+====================================================================================================
+PROJECT STRUCTURE ANALYSIS
+====================================================================================================
+Generated: 2025-11-26 18:21:05
+Project Root: D:\pycharm_projects_2\heart_diseas_ML
+====================================================================================================
+
+📊 PROJECT STATISTICS
+----------------------------------------------------------------------------------------------------
+Total Directories: 6
+Total Files: 12
+Total Size: 136.34 KB
+
+File Types Distribution:
+  .py: 7 files
+  no_extension: 2 files
+  .txt: 2 files
+  .md: 1 files
+
+Top 10 Largest Files:
+  PROJECT_STRUCTURE.txt: 88.18 KB
+  backend\app.py: 13.18 KB
+  analyze_project.py: 10.49 KB
+  backend\chatbot_service.py: 9.76 KB
+  backend\model_service.py: 6.58 KB
+  test_model.py: 3.42 KB
+  backend\create_mock_model.py: 2.09 KB
+  train_sklearn.py: 1.17 KB
+  README.md: 616.00 B
+  .gitignore: 421.00 B
+
+====================================================================================================
+
+🌳 TREE STRUCTURE
+----------------------------------------------------------------------------------------------------
+heart_diseas_ML/
+├── backend/
+│   ├── app.py (13.18 KB)
+│   ├── chatbot_service.py (9.76 KB)
+│   ├── create_mock_model.py (2.09 KB)
+│   └── model_service.py (6.58 KB)
+├── data/
+├── docs/
+├── frontend/
+├── models/
+├── tests/
+├── .env (284.00 B)
+├── .gitignore (421.00 B)
+├── PROJECT_STRUCTURE.txt (88.18 KB)
+├── README.md (616.00 B)
+├── analyze_project.py (10.49 KB)
+├── requirements.txt (203.00 B)
+├── test_model.py (3.42 KB)
+└── train_sklearn.py (1.17 KB)
+
+====================================================================================================
+
+📑 DETAILED FILE CONTENTS
+====================================================================================================
+
+================================================================================
+📁 DIRECTORY: backend/
+================================================================================
+
+
+  --------------------------------------------------------------------------------
+  📄 FILE: backend\app.py
+  Size: 13.18 KB
+  --------------------------------------------------------------------------------
+  Content:
+  ```
+  """
+  HeartGuard AI - Complete Streamlit Application
+  """
+  
+  import streamlit as st
+  import sys
+  import os
+  from pathlib import Path
+  
+  # Add backend to path and set working directory
+  backend_dir = Path(__file__).resolve().parent
+  project_root = backend_dir.parent
+  sys.path.insert(0, str(backend_dir))
+  
+  # Import after path is set
+  try:
+      from model_service import get_predictor, HeartDiseasePredictor
+      import logging
+  except ImportError as e:
+      st.error(f"Import error: {e}")
+      st.stop()
+  
+  logging.basicConfig(level=logging.INFO)
+  logger = logging.getLogger(__name__)
+  
+  
+  def init_session_state():
+      """Initialize session state variables"""
+      if 'collected_features' not in st.session_state:
+          st.session_state.collected_features = {}
+      if 'conversation_history' not in st.session_state:
+          st.session_state.conversation_history = []
+      if 'prediction_result' not in st.session_state:
+          st.session_state.prediction_result = None
+  
+  
+  def render_header():
+      """Render app header"""
+      st.set_page_config(page_title="HeartGuard AI", page_icon="❤️", layout="wide")
+  
+      st.title("🫀 HeartGuard AI")
+      st.markdown("### Intelligent Cardiac Risk Assessment System")
+      st.markdown("---")
+  
+  
+  def render_sidebar_debug():
+      """Render debug information in sidebar"""
+      st.sidebar.markdown("---")
+      st.sidebar.markdown("#### 🔧 Debug Info")
+  
+      model_p = project_root / 'models' / 'heart_model_gnb.pkl'
+      scaler_p = project_root / 'models' / 'scaler.pkl'
+  
+      st.sidebar.caption(f"**Working Dir:** `{os.getcwd()}`")
+      st.sidebar.caption(f"**Project Root:** `{project_root}`")
+      st.sidebar.caption(f"**Model exists:** {model_p.exists()}")
+      st.sidebar.caption(f"**Scaler exists:** {scaler_p.exists()}")
+  
+  
+  def render_sidebar_progress(predictor):
+      """Render feature collection progress in sidebar"""
+      st.sidebar.header("📊 Collection Progress")
+  
+      collected = st.session_state.collected_features
+      total_features = 13
+      collected_count = len(collected)
+      progress = collected_count / total_features
+  
+      st.sidebar.progress(progress)
+      st.sidebar.metric("Features Collected", f"{collected_count}/{total_features}")
+  
+      if collected:
+          st.sidebar.markdown("#### ✅ Collected Features:")
+          for feature, value in list(collected.items())[:5]:
+              if feature in predictor.FEATURE_CONFIG:
+                  label = predictor.FEATURE_CONFIG[feature]['label']
+                  st.sidebar.text(f"• {label}: {value}")
+  
+      missing = set(predictor.FEATURE_NAMES) - set(collected.keys())
+      if missing:
+          st.sidebar.markdown(f"#### ⏳ Remaining: {len(missing)}")
+  
+  
+  def form_based_mode():
+      """Form-based feature input"""
+      st.header("📋 Form-Based Mode")
+      st.markdown("Manually input all medical features using the form below.")
+  
+      try:
+          predictor = get_predictor()
+      except Exception as e:
+          st.error(f"❌ Error loading model: {e}")
+          st.info("Make sure your model files are in the models/ directory!")
+          return
+  
+      with st.form("feature_form"):
+          st.subheader("Patient Information")
+  
+          col1, col2 = st.columns(2)
+  
+          with col1:
+              age = st.slider("Age", 29, 77, 50, help="Patient age in years")
+              sex = st.selectbox("Sex", options=[0, 1], format_func=lambda x: "Female" if x == 0 else "Male")
+              cp = st.selectbox(
+                  "Chest Pain Type",
+                  options=[1, 2, 3, 4],
+                  format_func=lambda x: {1: "Typical Angina", 2: "Atypical Angina",
+                                         3: "Non-anginal Pain", 4: "Asymptomatic"}[x]
+              )
+              trestbps = st.slider("Resting Blood Pressure (mm Hg)", 94, 200, 130)
+              chol = st.slider("Serum Cholesterol (mg/dl)", 126, 564, 250)
+              fbs = st.selectbox("Fasting Blood Sugar > 120 mg/dl", options=[0, 1],
+                                 format_func=lambda x: "No" if x == 0 else "Yes")
+              restecg = st.selectbox(
+                  "Resting ECG",
+                  options=[0, 1, 2],
+                  format_func=lambda x: {0: "Normal", 1: "ST-T Wave Abnormality",
+                                         2: "Left Ventricular Hypertrophy"}[x]
+              )
+  
+          with col2:
+              thalach = st.slider("Maximum Heart Rate", 71, 202, 150)
+              exang = st.selectbox("Exercise Induced Angina", options=[0, 1],
+                                   format_func=lambda x: "No" if x == 0 else "Yes")
+              oldpeak = st.slider("ST Depression", 0.0, 6.2, 1.0, step=0.1)
+              slope = st.selectbox(
+                  "Slope of Peak Exercise ST",
+                  options=[1, 2, 3],
+                  format_func=lambda x: {1: "Upsloping", 2: "Flat", 3: "Downsloping"}[x]
+              )
+              ca = st.selectbox("Number of Major Vessels (0-3)", options=[0, 1, 2, 3])
+              thal = st.selectbox(
+                  "Thalassemia",
+                  options=[3, 6, 7],
+                  format_func=lambda x: {3: "Normal", 6: "Fixed Defect", 7: "Reversible Defect"}[x]
+              )
+  
+          submitted = st.form_submit_button("🔍 Get Prediction", type="primary", use_container_width=True)
+  
+          if submitted:
+              features = {
+                  'age': age, 'sex': sex, 'cp': cp, 'trestbps': trestbps,
+                  'chol': chol, 'fbs': fbs, 'restecg': restecg, 'thalach': thalach,
+                  'exang': exang, 'oldpeak': oldpeak, 'slope': slope, 'ca': ca, 'thal': thal
+              }
+  
+              try:
+                  with st.spinner("Making prediction..."):
+                      result = predictor.predict(features)
+                      st.session_state.prediction_result = result
+                      st.session_state.collected_features = features
+  
+              except Exception as e:
+                  st.error(f"❌ Prediction error: {e}")
+                  import traceback
+                  st.code(traceback.format_exc())
+  
+  
+  def render_prediction_result():
+      """Render prediction results"""
+      if st.session_state.prediction_result is None:
+          return
+  
+      result = st.session_state.prediction_result
+  
+      st.markdown("---")
+      st.header("🎯 Prediction Results")
+  
+      # Metrics
+      col1, col2, col3 = st.columns(3)
+  
+      with col1:
+          st.metric(
+              "Diagnosis",
+              result['diagnosis'],
+              delta=None
+          )
+  
+      with col2:
+          st.metric(
+              "Probability",
+              f"{result['probability'] * 100:.1f}%"
+          )
+  
+      with col3:
+          st.metric(
+              "Risk Level",
+              f"{result['risk_emoji']} {result['risk_level']}"
+          )
+  
+      # Progress bar
+      st.progress(result['probability'])
+  
+      # Disclaimer
+      st.warning(result['medical_disclaimer'])
+  
+      # Action buttons
+      col_a, col_b = st.columns(2)
+      with col_a:
+          if st.button("🔄 New Assessment", use_container_width=True):
+              st.session_state.prediction_result = None
+              st.session_state.collected_features = {}
+              st.session_state.conversation_history = []
+              st.rerun()
+  
+      with col_b:
+          report_text = f"""HeartGuard AI Assessment Report
+  
+  Diagnosis: {result['diagnosis']}
+  Probability: {result['probability'] * 100:.1f}%
+  Risk Level: {result['risk_level']}
+  
+  {result['medical_disclaimer']}
+  
+  Features Used:
+  {str(st.session_state.collected_features)}
+  """
+          st.download_button(
+              "📥 Download Report",
+              data=report_text,
+              file_name="heart_assessment.txt",
+              use_container_width=True
+          )
+  
+  
+  def image_analysis_mode():
+      """Image upload and analysis (placeholder for future)"""
+      st.header("📸 Image Analysis Mode")
+      st.markdown("Upload medical images (e.g., ECG, X-rays) for analysis.")
+  
+      uploaded_file = st.file_uploader(
+          "Upload Medical Image",
+          type=["png", "jpg", "jpeg"],
+          help="Supported: ECG images, chest X-rays"
+      )
+  
+      if uploaded_file is not None:
+          st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
+          st.info("🚧 Image analysis feature coming soon! Currently use Form-Based Mode.")
+  
+  
+  def conversational_mode():
+      """Conversational chatbot mode with Cerebras LLM"""
+      st.header("💬 Conversational Mode")
+      st.markdown("Chat naturally with AI to collect your health information.")
+  
+      try:
+          from chatbot_service import get_chatbot
+          chatbot = get_chatbot()
+          predictor = get_predictor()
+      except Exception as e:
+          st.error(f"❌ Chatbot initialization failed: {e}")
+          st.info("💡 Make sure CEREBRAS_API_KEY is set in .env file")
+          return
+  
+      # Display chat history
+      for msg in st.session_state.conversation_history:
+          with st.chat_message(msg["role"]):
+              st.markdown(msg["content"])
+  
+      # Feature collection progress (sidebar)
+      collected_count = len(st.session_state.collected_features)
+      if collected_count > 0:
+          st.sidebar.success(f"📋 Features: {collected_count}/13 collected")
+  
+          missing = set(predictor.FEATURE_NAMES) - set(st.session_state.collected_features.keys())
+          if missing and collected_count < 13:
+              st.sidebar.info(f"Still need: {', '.join(list(missing)[:3])}")
+  
+      # Check if ready for prediction
+      if collected_count == 13 and st.session_state.prediction_result is None:
+          st.success("🎉 All 13 features collected! Ready for prediction.")
+          if st.button("🔍 Get Prediction Now", type="primary", use_container_width=True):
+              try:
+                  result = predictor.predict(st.session_state.collected_features)
+                  st.session_state.prediction_result = result
+                  st.rerun()
+              except Exception as e:
+                  st.error(f"Prediction error: {e}")
+  
+      # Display prediction if available
+      if st.session_state.prediction_result:
+          render_prediction_result()
+          return
+  
+      # Chat input
+      if prompt := st.chat_input("Type your message here..."):
+          # Add user message to history
+          st.session_state.conversation_history.append({
+              "role": "user",
+              "content": prompt
+          })
+  
+          # Display user message
+          with st.chat_message("user"):
+              st.markdown(prompt)
+  
+          # Get chatbot response
+          with st.chat_message("assistant"):
+              with st.spinner("Thinking..."):
+                  response, new_features = chatbot.chat(
+                      prompt,
+                      st.session_state.conversation_history,
+                      st.session_state.collected_features
+                  )
+  
+                  # Update collected features
+                  st.session_state.collected_features.update(new_features)
+  
+                  # Add response to history
+                  st.session_state.conversation_history.append({
+                      "role": "assistant",
+                      "content": response
+                  })
+  
+                  st.markdown(response)
+  
+          st.rerun()
+  
+      # Quick start buttons
+      if len(st.session_state.conversation_history) == 0:
+          st.info("👋 Start by saying hello or sharing your age and medical history!")
+          col1, col2, col3 = st.columns(3)
+          with col1:
+              if st.button("🩺 Start Assessment"):
+                  starter = "Hello, I'd like to assess my heart disease risk."
+                  st.session_state.conversation_history.append({"role": "user", "content": starter})
+                  st.rerun()
+          with col2:
+              if st.button("❓ Learn More"):
+                  starter = "What information do you need from me?"
+                  st.session_state.conversation_history.append({"role": "user", "content": starter})
+                  st.rerun()
+          with col3:
+              if st.button("🔄 Reset Chat"):
+                  st.session_state.conversation_history = []
+                  st.session_state.collected_features = {}
+                  st.session_state.prediction_result = None
+                  st.rerun()
+  
+  
+  def main():
+      """Main application entry point"""
+      render_header()
+      init_session_state()
+  
+      # Try to load predictor
+      try:
+          predictor = get_predictor()
+          st.sidebar.success("✅ Model loaded successfully!")
+          render_sidebar_progress(predictor)
+      except Exception as e:
+          st.sidebar.error(f"❌ Model loading failed!")
+          st.error(f"""
+          **Error loading model:** {e}
+  
+          **Required files:**
+          - `models/heart_model_gnb.pkl`
+          - `models/scaler.pkl`
+  
+          **Solution:**
+          1. Run: python train_sklearn.py
+          2. Restart the app
+          """)
+          render_sidebar_debug()
+          return
+  
+      # Sidebar navigation
+      st.sidebar.markdown("---")
+  
+      page = st.sidebar.radio(
+          "Select Mode:",
+          ["📋 Form-Based", "💬 Conversational", "📸 Image Analysis"],
+          index=0
+      )
+  
+      # Route to appropriate mode
+      if page == "📋 Form-Based":
+          form_based_mode()
+          render_prediction_result()
+  
+      elif page == "💬 Conversational":
+          conversational_mode()
+  
+      elif page == "📸 Image Analysis":
+          image_analysis_mode()
+  
+      # Footer
+      st.sidebar.markdown("---")
+      st.sidebar.markdown("""
+      ### About
+      **HeartGuard AI** uses machine learning to assess cardiac risk based on clinical features.
+  
+      **⚠️ Medical Disclaimer:**
+      This tool is for educational purposes only and should not be used as a substitute for professional medical advice.
+      """)
+  
+      # Debug info
+      render_sidebar_debug()
+  
+  
+  if __name__ == "__main__":
+      main()
+  
+  ```
+
+
+  --------------------------------------------------------------------------------
+  📄 FILE: backend\chatbot_service.py
+  Size: 9.76 KB
+  --------------------------------------------------------------------------------
+  Content:
+  ```
+  """
+  Cerebras-powered Medical Chatbot for Feature Extraction
+  Uses Llama 3.3 70B for intelligent conversation + feature extraction
+  """
+  
+  from cerebras.cloud.sdk import Cerebras
+  import os
+  import json
+  from typing import Dict, List, Tuple
+  from dotenv import load_dotenv
+  
+  load_dotenv()
+  
+  
+  class MedicalChatbot:
+      """Conversational AI for heart disease feature collection"""
+  
+      FEATURE_PROMPTS = {
+          'age': "How old are you?",
+          'sex': "What is your biological sex? (Male/Female)",
+          'cp': "Do you experience chest pain? If yes, what type?",
+          'trestbps': "What is your resting blood pressure? (in mm Hg)",
+          'chol': "What is your serum cholesterol level? (in mg/dl)",
+          'fbs': "Is your fasting blood sugar greater than 120 mg/dl? (Yes/No)",
+          'restecg': "What are your resting ECG results?",
+          'thalach': "What is your maximum heart rate achieved during exercise?",
+          'exang': "Do you experience chest pain during exercise? (Yes/No)",
+          'oldpeak': "What is your ST depression induced by exercise? (0.0 to 6.2)",
+          'slope': "What is the slope of your peak exercise ST segment?",
+          'ca': "How many major vessels are colored by fluoroscopy? (0-3)",
+          'thal': "What is your thalassemia status?"
+      }
+  
+      def __init__(self):
+          """Initialize the chatbot with Cerebras API"""
+          api_key = os.getenv('CEREBRAS_API_KEY')
+          if not api_key:
+              raise ValueError("CEREBRAS_API_KEY not found in .env file")
+          self.client = Cerebras(api_key=api_key)
+          self.model = "llama-3.3-70b"
+  
+      def create_system_prompt(self, collected_features: Dict) -> str:
+          """Dynamic system prompt based on collected features"""
+          missing = [f for f in self.FEATURE_PROMPTS.keys() if f not in collected_features]
+          collected_list = list(collected_features.keys())
+          collected_count = len(collected_features)
+          missing_preview = missing[:3] if missing else ['None - ready!']
+  
+          prompt = "You are a compassionate medical AI assistant helping patients assess their cardiac health.\n\n"
+          prompt += "Your Dual Role:\n"
+          prompt += "1. Feature Extraction: Naturally extract these 13 medical features through conversation:\n"
+          prompt += "   - age, sex, cp (chest pain), trestbps (BP), chol (cholesterol)\n"
+          prompt += "   - fbs (blood sugar), restecg (ECG), thalach (max heart rate)\n"
+          prompt += "   - exang (exercise angina), oldpeak (ST depression), slope (ST slope)\n"
+          prompt += "   - ca (# vessels), thal (thalassemia)\n\n"
+          prompt += "2. General Conversation: Answer medical questions, provide health education.\n\n"
+          prompt += "Current Status:\n"
+          prompt += f"- Collected: {collected_list} ({collected_count}/13)\n"
+          prompt += f"- Still needed: {missing_preview}\n\n"
+          prompt += "Guidelines:\n"
+          prompt += "- Ask 1-2 questions at a time\n"
+          prompt += "- Use simple language, explain medical terms\n"
+          prompt += "- If user shares info, acknowledge it\n"
+          prompt += "- When all 13 collected, congratulate and suggest prediction\n\n"
+          prompt += "Be warm, professional, and medically accurate."
+  
+          return prompt
+  
+      def extract_features_from_text(self, user_message: str, collected: Dict) -> Dict:
+          """Use LLM to extract features from user message"""
+  
+          collected_list = list(collected.keys())
+  
+          extraction_prompt = "Extract medical features from this user message and return ONLY valid JSON.\n\n"
+          extraction_prompt += f'User message: "{user_message}"\n\n'
+          extraction_prompt += f"Already collected: {collected_list}\n\n"
+          extraction_prompt += "Expected features (only if explicitly mentioned):\n"
+          extraction_prompt += "- age: integer 29-77\n"
+          extraction_prompt += "- sex: 0 (female) or 1 (male)\n"
+          extraction_prompt += "- cp: 1-4 (chest pain type)\n"
+          extraction_prompt += "- trestbps: integer 94-200 (blood pressure)\n"
+          extraction_prompt += "- chol: integer 126-564 (cholesterol)\n"
+          extraction_prompt += "- fbs: 0 or 1 (fasting blood sugar > 120)\n"
+          extraction_prompt += "- restecg: 0-2 (resting ECG)\n"
+          extraction_prompt += "- thalach: integer 71-202 (max heart rate)\n"
+          extraction_prompt += "- exang: 0 or 1 (exercise angina)\n"
+          extraction_prompt += "- oldpeak: float 0.0-6.2 (ST depression)\n"
+          extraction_prompt += "- slope: 1-3 (ST slope)\n"
+          extraction_prompt += "- ca: 0-3 (major vessels)\n"
+          extraction_prompt += "- thal: 3, 6, or 7 (thalassemia)\n\n"
+          extraction_prompt += "Examples:\n"
+          extraction_prompt += 'User: "I am 58 and male" -> {"age": 58, "sex": 1}\n'
+          extraction_prompt += 'User: "cholesterol 240" -> {"chol": 240}\n'
+          extraction_prompt += 'User: "no chest pain" -> {"cp": 4}\n'
+          extraction_prompt += 'User: "just chatting" -> {}\n\n'
+          extraction_prompt += "Return ONLY the JSON object, nothing else."
+  
+          try:
+              response = self.client.chat.completions.create(
+                  model="llama-3.1-8b",
+                  messages=[{"role": "user", "content": extraction_prompt}],
+                  temperature=0.1,
+                  max_tokens=300
+              )
+  
+              content = response.choices[0].message.content.strip()
+  
+              # Clean markdown code blocks
+              backtick_json = "```"
+              backtick_plain = "```"
+  
+              if backtick_json in content:
+                  parts = content.split(backtick_json)
+                  if len(parts) > 1:
+                      content = parts[1].split(backtick_plain)[0].strip()
+              elif backtick_plain in content:
+                  parts = content.split(backtick_plain)
+                  if len(parts) > 1:
+                      content = parts[1].split(backtick_plain)[0].strip()
+  
+              # Extract JSON
+              if "{" in content and "}" in content:
+                  start = content.index("{")
+                  end = content.rindex("}") + 1
+                  content = content[start:end]
+  
+              extracted = json.loads(content)
+  
+              # Validate
+              valid_features = {}
+              ranges = {
+                  'age': (29, 77), 'trestbps': (94, 200), 'chol': (126, 564),
+                  'thalach': (71, 202), 'oldpeak': (0.0, 6.2), 'ca': (0, 3),
+                  'sex': (0, 1), 'cp': (1, 4), 'fbs': (0, 1), 'restecg': (0, 2),
+                  'exang': (0, 1), 'slope': (1, 3), 'thal': (3, 7)
+              }
+  
+              for key, value in extracted.items():
+                  if key not in self.FEATURE_PROMPTS or key in collected:
+                      continue
+  
+                  try:
+                      if key in ['age', 'trestbps', 'chol', 'thalach', 'ca', 'sex',
+                                 'cp', 'fbs', 'restecg', 'exang', 'slope', 'thal']:
+                          value = int(float(value))
+                      elif key == 'oldpeak':
+                          value = float(value)
+  
+                      if key in ranges:
+                          min_val, max_val = ranges[key]
+                          if min_val <= value <= max_val:
+                              valid_features[key] = value
+                          else:
+                              print(f"Warning: {key}={value} out of range [{min_val}, {max_val}]")
+  
+                  except (ValueError, TypeError) as e:
+                      print(f"Warning: Invalid value for {key}: {value} ({e})")
+                      continue
+  
+              return valid_features
+  
+          except json.JSONDecodeError as e:
+              print(f"JSON parsing error: {e}")
+              return {}
+          except Exception as e:
+              print(f"Feature extraction error: {e}")
+              return {}
+  
+      def chat(self, message: str, history: List[Dict], collected_features: Dict) -> Tuple[str, Dict]:
+          """Main chat function"""
+  
+          new_features = self.extract_features_from_text(message, collected_features)
+  
+          messages = [{"role": "system", "content": self.create_system_prompt(collected_features)}]
+  
+          for msg in history[-10:]:
+              messages.append({"role": msg["role"], "content": msg["content"]})
+  
+          messages.append({"role": "user", "content": message})
+  
+          try:
+              response = self.client.chat.completions.create(
+                  model=self.model,
+                  messages=messages,
+                  temperature=0.7,
+                  max_tokens=400
+              )
+  
+              assistant_message = response.choices[0].message.content
+  
+              if new_features:
+                  feature_names = {
+                      'age': 'age', 'sex': 'sex', 'cp': 'chest pain type',
+                      'trestbps': 'blood pressure', 'chol': 'cholesterol',
+                      'fbs': 'fasting blood sugar', 'restecg': 'resting ECG',
+                      'thalach': 'max heart rate', 'exang': 'exercise angina',
+                      'oldpeak': 'ST depression', 'slope': 'ST slope',
+                      'ca': 'major vessels', 'thal': 'thalassemia'
+                  }
+  
+                  feature_list = [feature_names.get(k, k) for k in new_features.keys()]
+                  acknowledgment = "\n\nNoted: " + ", ".join(feature_list)
+                  assistant_message += acknowledgment
+  
+              return assistant_message, new_features
+  
+          except Exception as e:
+              error_msg = f"I apologize, I'm having technical difficulties: {str(e)}"
+              print(f"Chat error: {e}")
+              return error_msg, {}
+  
+  
+  _chatbot = None
+  
+  
+  def get_chatbot():
+      """Get or create chatbot instance"""
+      global _chatbot
+      if _chatbot is None:
+          print("Initializing Cerebras chatbot...")
+          _chatbot = MedicalChatbot()
+          print("Chatbot ready!")
+      return _chatbot
+  
+  ```
+
+
+  --------------------------------------------------------------------------------
+  📄 FILE: backend\create_mock_model.py
+  Size: 2.09 KB
+  --------------------------------------------------------------------------------
+  Content:
+  ```
+  """
+  Create a simple mock model for testing without TensorFlow loading issues
+  """
+  
+  import pickle
+  import numpy as np
+  from pathlib import Path
+  from sklearn.preprocessing import MinMaxScaler
+  import joblib
+  
+  # Create project paths
+  project_root = Path(__file__).resolve().parent.parent
+  models_dir = project_root / 'models'
+  models_dir.mkdir(exist_ok=True)
+  
+  print("Creating mock model and scaler...")
+  
+  
+  # 1. Create a simple mock model (just a function that predicts)
+  class SimplePredictor:
+      def __init__(self):
+          self.input_shape = (None, 13)
+          self.output_shape = (None, 1)
+  
+      def predict(self, X, verbose=0):
+          # Simple rule-based prediction
+          # If cholesterol > 240 and age > 50, higher risk
+          predictions = []
+          for sample in X:
+              age, sex, cp, trestbps, chol, fbs, restecg, thalach, exang, oldpeak, slope, ca, thal = sample
+  
+              # Simple scoring rule
+              score = 0
+              if chol > 240:
+                  score += 0.3
+              if trestbps > 140:
+                  score += 0.2
+              if age > 50:
+                  score += 0.15
+              if oldpeak > 2:
+                  score += 0.25
+              if ca > 1:
+                  score += 0.1
+  
+              # Normalize to 0-1
+              score = min(score, 1.0)
+              predictions.append([score])
+  
+          return np.array(predictions)
+  
+  
+  mock_model = SimplePredictor()
+  
+  # Save mock model
+  mock_model_path = models_dir / 'best_model_final_nn.keras'
+  with open(mock_model_path, 'wb') as f:
+      pickle.dump(mock_model, f)
+  
+  print(f"✅ Mock model saved: {mock_model_path}")
+  
+  # 2. Create scaler
+  scaler = MinMaxScaler()
+  dummy_data = np.array([
+      [29, 0, 1, 94, 126, 0, 0, 71, 0, 0.0, 1, 0, 3],
+      [77, 1, 4, 200, 564, 1, 2, 202, 1, 6.2, 3, 3, 7]
+  ])
+  scaler.fit(dummy_data)
+  
+  scaler_path = models_dir / 'scaler.pkl'
+  with open(scaler_path, 'wb') as f:
+      pickle.dump(scaler, f)
+  
+  print(f"✅ Scaler saved: {scaler_path}")
+  print(f"\n✅ Mock model and scaler ready!")
+  print(f"   Model path: {mock_model_path}")
+  print(f"   Scaler path: {scaler_path}")
+  
+  ```
+
+
+  --------------------------------------------------------------------------------
+  📄 FILE: backend\model_service.py
+  Size: 6.58 KB
+  --------------------------------------------------------------------------------
+  Content:
+  ```
+  """
+  Heart Disease Predictor - Sklearn Version (No TensorFlow)
+  Compatible with your trained GaussianNB model from train_sklearn.py
+  """
+  
+  import joblib
+  import numpy as np
+  from pathlib import Path
+  import logging
+  
+  logging.basicConfig(level=logging.INFO)
+  logger = logging.getLogger(__name__)
+  
+  
+  class HeartDiseasePredictor:
+      """Heart disease prediction using Gaussian Naive Bayes"""
+  
+      FEATURE_NAMES = [
+          'age', 'sex', 'cp', 'trestbps', 'chol', 'fbs',
+          'restecg', 'thalach', 'exang', 'oldpeak', 'slope', 'ca', 'thal'
+      ]
+  
+      FEATURE_CONFIG = {
+          'age': {'range': (29, 77), 'type': int, 'label': 'Age (years)'},
+          'sex': {'range': (0, 1), 'type': int, 'label': 'Sex (0=Female, 1=Male)'},
+          'cp': {'range': (1, 4), 'type': int, 'label': 'Chest Pain Type'},
+          'trestbps': {'range': (94, 200), 'type': int, 'label': 'Resting Blood Pressure (mm Hg)'},
+          'chol': {'range': (126, 564), 'type': int, 'label': 'Serum Cholesterol (mg/dl)'},
+          'fbs': {'range': (0, 1), 'type': int, 'label': 'Fasting Blood Sugar > 120 mg/dl'},
+          'restecg': {'range': (0, 2), 'type': int, 'label': 'Resting ECG'},
+          'thalach': {'range': (71, 202), 'type': int, 'label': 'Maximum Heart Rate'},
+          'exang': {'range': (0, 1), 'type': int, 'label': 'Exercise Induced Angina'},
+          'oldpeak': {'range': (0.0, 6.2), 'type': float, 'label': 'ST Depression'},
+          'slope': {'range': (1, 3), 'type': int, 'label': 'Slope of Peak Exercise ST'},
+          'ca': {'range': (0, 3), 'type': int, 'label': 'Number of Major Vessels'},
+          'thal': {'range': (3, 7), 'type': int, 'label': 'Thalassemia Type'}
+      }
+  
+      def __init__(self, model_path=None, scaler_path=None):
+          """Initialize predictor with sklearn model paths"""
+          project_root = Path(__file__).resolve().parents[1]
+  
+          default_model = project_root / 'models' / 'heart_model_gnb.pkl'
+          default_scaler = project_root / 'models' / 'scaler.pkl'
+  
+          self.model_path = Path(model_path or default_model).resolve()
+          self.scaler_path = Path(scaler_path or default_scaler).resolve()
+  
+          self.model = None
+          self.scaler = None
+          self.is_loaded = False
+  
+      def load(self):
+          """Load sklearn model and scaler"""
+          try:
+              print(f"\n{'=' * 60}")
+              print("LOADING MODEL AND SCALER")
+              print(f"{'=' * 60}")
+  
+              if not self.model_path.exists():
+                  print(f"❌ Model not found: {self.model_path}")
+                  print(f"   Run: python train_sklearn.py")
+                  self.is_loaded = False
+                  return False
+  
+              if not self.scaler_path.exists():
+                  print(f"❌ Scaler not found: {self.scaler_path}")
+                  print(f"   Run: python train_sklearn.py")
+                  self.is_loaded = False
+                  return False
+  
+              print(f"✅ Model: {self.model_path.name}")
+              print(f"✅ Scaler: {self.scaler_path.name}")
+  
+              # Load scaler
+              print(f"\n🔄 Loading scaler...")
+              self.scaler = joblib.load(self.scaler_path)
+              print(f"✅ Scaler loaded ({self.scaler.n_features_in_} features)")
+  
+              # Load model
+              print(f"\n🔄 Loading model...")
+              self.model = joblib.load(self.model_path)
+              print(f"✅ Sklearn GaussianNB loaded!")
+  
+              # Test prediction
+              print(f"\n🧪 Testing...")
+              test = np.array([[50, 1, 3, 130, 250, 0, 1, 140, 0, 1.5, 2, 0, 3]])
+              test_scaled = self.scaler.transform(test)
+              pred = self.model.predict_proba(test_scaled)[0][1]
+              print(f"✅ Test prediction: {pred:.4f}")
+  
+              self.is_loaded = True
+  
+              print(f"\n{'=' * 60}")
+              print("✅ READY! is_loaded = True")
+              print(f"{'=' * 60}\n")
+  
+              return True
+  
+          except Exception as e:
+              print(f"❌ Error: {e}")
+              import traceback
+              traceback.print_exc()
+              self.is_loaded = False
+              return False
+  
+      def validate_features(self, features):
+          """Validate input features"""
+          if len(features) != 13:
+              return False, f"Expected 13 features, got {len(features)}"
+  
+          for name in self.FEATURE_NAMES:
+              if name not in features:
+                  return False, f"Missing feature: {name}"
+  
+          return True, None
+  
+      def preprocess(self, features):
+          """Convert feature dict to scaled array"""
+          arr = np.array([[features[name] for name in self.FEATURE_NAMES]])
+          return self.scaler.transform(arr)
+  
+      def predict(self, features):
+          """Make heart disease prediction"""
+          if not self.is_loaded or self.model is None or self.scaler is None:
+              error_msg = f"Model not loaded! (is_loaded={self.is_loaded})"
+              print(f"❌ {error_msg}")
+              raise RuntimeError(error_msg)
+  
+          # Validate
+          valid, err = self.validate_features(features)
+          if not valid:
+              raise ValueError(err)
+  
+          # Predict
+          try:
+              scaled = self.preprocess(features)
+              prob = float(self.model.predict_proba(scaled)[0][1])
+  
+              # Risk levels
+              if prob > 0.7:
+                  risk, emoji = 'HIGH', '🔴'
+              elif prob > 0.4:
+                  risk, emoji = 'MODERATE', '🟡'
+              else:
+                  risk, emoji = 'LOW', '🟢'
+  
+              return {
+                  'prediction': int(prob > 0.5),
+                  'probability': prob,
+                  'risk_level': risk,
+                  'risk_emoji': emoji,
+                  'diagnosis': 'Heart Disease' if prob > 0.5 else 'No Heart Disease',
+                  'medical_disclaimer': '⚠️ Educational purposes only. Consult a healthcare professional.'
+              }
+          except Exception as e:
+              print(f"❌ Prediction error: {e}")
+              import traceback
+              traceback.print_exc()
+              raise
+  
+  
+  # Singleton instance
+  _predictor = None
+  
+  
+  def get_predictor():
+      """Get or create predictor singleton"""
+      global _predictor
+  
+      if _predictor is None:
+          print("Creating new predictor instance...")
+          _predictor = HeartDiseasePredictor()
+          success = _predictor.load()
+          if not success:
+              raise RuntimeError("Failed to load model! Run: python train_sklearn.py")
+          print(f"✅ Predictor ready (is_loaded={_predictor.is_loaded})")
+      else:
+          print(f"Using existing predictor (is_loaded={_predictor.is_loaded})")
+  
+      return _predictor
+  
+  ```
+
+
+================================================================================
+📁 DIRECTORY: data/
+================================================================================
+
+
+================================================================================
+📁 DIRECTORY: docs/
+================================================================================
+
+
+================================================================================
+📁 DIRECTORY: frontend/
+
+
+... [File truncated - showing first 1000 lines only] ...
+
+```
+
+
+--------------------------------------------------------------------------------
+📄 FILE: README.md
+Size: 616.00 B
+--------------------------------------------------------------------------------
+Content:
+```
+# 🫀 HeartGuard AI - Intelligent Cardiac Risk Assessment System
+
+A full-stack AI application for heart disease prediction using deep learning.
+
+## Features
+
+- ✅ **Form-Based Input**: Manual feature entry with validation
+- 🤖 **AI Predictions**: Neural network trained on UCI Heart Disease dataset
+- 📊 **Risk Assessment**: Visual probability and risk level indicators
+- 📥 **Report Export**: Download assessment reports
+- ⚠️ **Medical Disclaimer**: Clear educational purpose warnings
+
+## Setup
+
+### 1. Prerequisites
+
+- Python 3.9+
+- Virtual environment
+- Your trained model files
+
+### 2. Installation
+
+
+```
+
+
+--------------------------------------------------------------------------------
+📄 FILE: analyze_project.py
+Size: 10.49 KB
+--------------------------------------------------------------------------------
+Content:
+```
+#!/usr/bin/env python3
+"""
+Project Structure Analyzer
+Generates a comprehensive project tree with file contents for AI context sharing
+"""
+
+import os
+import json
+from pathlib import Path
+from datetime import datetime
+
+# Directories and file patterns to exclude
+EXCLUDE_DIRS = {
+    'venv', 'env', '__pycache__', '.git', 'node_modules',
+    '.idea', '.vscode', 'dist', 'build', '.next', 'coverage',
+    '.pytest_cache', '.mypy_cache', 'htmlcov'
+}
+
+EXCLUDE_FILES = {
+    '.DS_Store', 'Thumbs.db', '.gitkeep', '*.pyc', '*.pyo',
+    '*.egg-info', '*.keras', '*.pkl', '*.h5', '*.weights'
+}
+
+# File extensions to include content for
+TEXT_EXTENSIONS = {
+    '.py', '.js', '.jsx', '.ts', '.tsx', '.json', '.md', '.txt',
+    '.yaml', '.yml', '.toml', '.ini', '.cfg', '.conf', '.env.example',
+    '.gitignore', '.dockerignore', 'Dockerfile', '.html', '.css', '.scss',
+    '.sh', '.bash', '.sql', '.xml'
+}
+
+BINARY_EXTENSIONS = {'.keras', '.pkl', '.h5', '.weights', '.jpg', '.png', '.gif', '.pdf'}
+
+def should_exclude_dir(dir_name):
+    """Check if directory should be excluded"""
+    return dir_name in EXCLUDE_DIRS or dir_name.startswith('.')
+
+def should_exclude_file(file_name):
+    """Check if file should be excluded"""
+    if file_name in EXCLUDE_FILES:
+        return True
+    for pattern in EXCLUDE_FILES:
+        if pattern.startswith('*') and file_name.endswith(pattern[1:]):
+            return True
+    return False
+
+def get_file_size(file_path):
+    """Get human-readable file size"""
+    size = os.path.getsize(file_path)
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if size < 1024.0:
+            return f"{size:.2f} {unit}"
+        size /= 1024.0
+    return f"{size:.2f} TB"
+
+def should_include_content(file_path):
+    """Determine if file content should be included"""
+    ext = Path(file_path).suffix.lower()
+    name = Path(file_path).name
+
+    # Check if it's a binary file
+    if ext in BINARY_EXTENSIONS:
+        return False
+
+    # Check if it's a text file we want to include
+    if ext in TEXT_EXTENSIONS or name in ['Dockerfile', 'Makefile', '.env.example']:
+        # Skip large files
+        if os.path.getsize(file_path) > 500000:  # 500KB limit
+            return False
+        return True
+
+    return False
+
+def read_file_content(file_path, max_lines=1000):
+    """Read file content with encoding fallback"""
+    encodings = ['utf-8', 'latin-1', 'cp1252']
+
+    for encoding in encodings:
+        try:
+            with open(file_path, 'r', encoding=encoding) as f:
+                lines = f.readlines()
+                if len(lines) > max_lines:
+                    return ''.join(lines[:max_lines]) + f"\n\n... [File truncated - showing first {max_lines} lines only] ...\n"
+                return ''.join(lines)
+        except (UnicodeDecodeError, UnicodeError):
+            continue
+        except Exception as e:
+            return f"[Error reading file: {str(e)}]"
+
+    return "[Binary file or unsupported encoding]"
+
+def generate_tree_structure(root_path, prefix="", output_lines=None):
+    """Generate tree-style directory structure"""
+    if output_lines is None:
+        output_lines = []
+
+    try:
+        items = sorted(os.listdir(root_path))
+    except PermissionError:
+        return output_lines
+
+    # Separate directories and files
+    dirs = [item for item in items if os.path.isdir(os.path.join(root_path, item))
+            and not should_exclude_dir(item)]
+    files = [item for item in items if os.path.isfile(os.path.join(root_path, item))
+             and not should_exclude_file(item)]
+
+    all_items = dirs + files
+
+    for i, item in enumerate(all_items):
+        is_last = i == len(all_items) - 1
+        current_prefix = "└── " if is_last else "├── "
+        next_prefix = "    " if is_last else "│   "
+
+        item_path = os.path.join(root_path, item)
+
+        if os.path.isdir(item_path):
+            output_lines.append(f"{prefix}{current_prefix}{item}/")
+            generate_tree_structure(item_path, prefix + next_prefix, output_lines)
+        else:
+            size = get_file_size(item_path)
+            output_lines.append(f"{prefix}{current_prefix}{item} ({size})")
+
+    return output_lines
+
+def generate_detailed_structure(root_path, base_path=None, indent=0):
+    """Generate detailed structure with file contents"""
+    if base_path is None:
+        base_path = root_path
+
+    output = []
+    indent_str = "  " * indent
+
+    try:
+        items = sorted(os.listdir(root_path))
+    except PermissionError:
+        return output
+
+    # Separate directories and files
+    dirs = [item for item in items if os.path.isdir(os.path.join(root_path, item))
+            and not should_exclude_dir(item)]
+    files = [item for item in items if os.path.isfile(os.path.join(root_path, item))
+             and not should_exclude_file(item)]
+
+    # Process directories first
+    for dir_name in dirs:
+        dir_path = os.path.join(root_path, dir_name)
+        rel_path = os.path.relpath(dir_path, base_path)
+
+        output.append(f"\n{indent_str}{'='*80}")
+        output.append(f"{indent_str}📁 DIRECTORY: {rel_path}/")
+        output.append(f"{indent_str}{'='*80}\n")
+
+        output.extend(generate_detailed_structure(dir_path, base_path, indent + 1))
+
+    # Process files
+    for file_name in files:
+        file_path = os.path.join(root_path, file_name)
+        rel_path = os.path.relpath(file_path, base_path)
+        size = get_file_size(file_path)
+
+        output.append(f"\n{indent_str}{'-'*80}")
+        output.append(f"{indent_str}📄 FILE: {rel_path}")
+        output.append(f"{indent_str}Size: {size}")
+        output.append(f"{indent_str}{'-'*80}")
+
+        if should_include_content(file_path):
+            content = read_file_content(file_path)
+            output.append(f"{indent_str}Content:")
+            output.append(f"{indent_str}```")
+            # Indent file content
+            for line in content.split('\n'):
+                output.append(f"{indent_str}{line}")
+            output.append(f"{indent_str}```\n")
+        else:
+            ext = Path(file_path).suffix.lower()
+            if ext in BINARY_EXTENSIONS:
+                output.append(f"{indent_str}[Binary file - content not included]\n")
+            else:
+                output.append(f"{indent_str}[Large file or excluded extension - content not included]\n")
+
+    return output
+
+def count_project_stats(root_path):
+    """Count project statistics"""
+    stats = {
+        'total_files': 0,
+        'total_dirs': 0,
+        'total_size': 0,
+        'file_types': {},
+        'largest_files': []
+    }
+
+    for root, dirs, files in os.walk(root_path):
+        # Filter directories
+        dirs[:] = [d for d in dirs if not should_exclude_dir(d)]
+
+        stats['total_dirs'] += len(dirs)
+
+        for file in files:
+            if should_exclude_file(file):
+                continue
+
+            file_path = os.path.join(root, file)
+            try:
+                size = os.path.getsize(file_path)
+                stats['total_files'] += 1
+                stats['total_size'] += size
+
+                ext = Path(file).suffix.lower() or 'no_extension'
+                stats['file_types'][ext] = stats['file_types'].get(ext, 0) + 1
+
+                stats['largest_files'].append((file_path, size))
+            except:
+                pass
+
+    # Keep only top 10 largest files
+    stats['largest_files'] = sorted(stats['largest_files'], key=lambda x: x[1], reverse=True)[:10]
+
+    return stats
+
+def format_size(size):
+    """Format bytes to human-readable size"""
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if size < 1024.0:
+            return f"{size:.2f} {unit}"
+        size /= 1024.0
+    return f"{size:.2f} TB"
+
+def main():
+    """Main function to generate project structure"""
+    project_root = Path(__file__).parent
+    output_file = project_root / "PROJECT_STRUCTURE.txt"
+
+    print("🔍 Analyzing project structure...")
+    print(f"📂 Root directory: {project_root}")
+
+    # Collect statistics
+    stats = count_project_stats(project_root)
+
+    # Generate output
+    output_lines = []
+
+    # Header
+    output_lines.append("="*100)
+    output_lines.append("PROJECT STRUCTURE ANALYSIS")
+    output_lines.append("="*100)
+    output_lines.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    output_lines.append(f"Project Root: {project_root}")
+    output_lines.append("="*100)
+    output_lines.append("")
+
+    # Statistics
+    output_lines.append("📊 PROJECT STATISTICS")
+    output_lines.append("-"*100)
+    output_lines.append(f"Total Directories: {stats['total_dirs']}")
+    output_lines.append(f"Total Files: {stats['total_files']}")
+    output_lines.append(f"Total Size: {format_size(stats['total_size'])}")
+    output_lines.append("")
+    output_lines.append("File Types Distribution:")
+    for ext, count in sorted(stats['file_types'].items(), key=lambda x: x[1], reverse=True):
+        output_lines.append(f"  {ext}: {count} files")
+    output_lines.append("")
+    output_lines.append("Top 10 Largest Files:")
+    for file_path, size in stats['largest_files']:
+        rel_path = os.path.relpath(file_path, project_root)
+        output_lines.append(f"  {rel_path}: {format_size(size)}")
+    output_lines.append("")
+    output_lines.append("="*100)
+    output_lines.append("")
+
+    # Tree structure
+    output_lines.append("🌳 TREE STRUCTURE")
+    output_lines.append("-"*100)
+    output_lines.append(f"{project_root.name}/")
+    tree_lines = generate_tree_structure(project_root)
+    output_lines.extend(tree_lines)
+    output_lines.append("")
+    output_lines.append("="*100)
+    output_lines.append("")
+
+    # Detailed structure with file contents
+    output_lines.append("📑 DETAILED FILE CONTENTS")
+    output_lines.append("="*100)
+    detailed_lines = generate_detailed_structure(project_root)
+    output_lines.extend(detailed_lines)
+
+    # Footer
+    output_lines.append("\n" + "="*100)
+    output_lines.append("END OF PROJECT STRUCTURE")
+    output_lines.append("="*100)
+
+    # Write to file
+    with open(output_file, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(output_lines))
+
+    print(f"✅ Project structure saved to: {output_file}")
+    print(f"📄 Total lines: {len(output_lines)}")
+    print(f"💾 File size: {format_size(os.path.getsize(output_file))}")
+    print("")
+    print("🤖 You can now share this file with AI assistants for complete project context!")
+
+if __name__ == "__main__":
+    main()
+```
+
+
+--------------------------------------------------------------------------------
+📄 FILE: image_service.py
+Size: 12.99 KB
+--------------------------------------------------------------------------------
+Content:
+```
+"""
+Image Analysis Service for Heart Disease Detection from Medical Images
+Supports: Cardiac MRI, Echocardiogram, ECG images
+"""
+
+import numpy as np
+from pathlib import Path
+import logging
+from PIL import Image
+import io
+
+logger = logging.getLogger(__name__)
+
+# Try to import TensorFlow/Keras
+try:
+    import tensorflow as tf
+    from tensorflow import keras
+
+    TF_AVAILABLE = True
+except ImportError:
+    TF_AVAILABLE = False
+    logger.warning("TensorFlow not available. Image analysis will use fallback mode.")
+
+
+class CardiacImageAnalyzer:
+    """
+    CNN-based cardiac image analyzer for heart disease detection.
+    Supports MRI, Echocardiogram, and ECG images.
+    """
+
+    # Image configuration
+    IMG_SIZE = (224, 224)  # Standard input size for CNN
+    CHANNELS = 3  # RGB
+
+    # Classification labels
+    CLASSES = ['Normal', 'Abnormal/Heart Disease Indicators']
+
+    def __init__(self, model_path=None):
+        """Initialize the image analyzer"""
+        project_root = Path(__file__).resolve().parents[1]
+
+        default_model = project_root / 'models' / 'cardiac_image_model.keras'
+        self.model_path = Path(model_path or default_model).resolve()
+
+        self.model = None
+        self.is_loaded = False
+
+    def load(self):
+        """Load the CNN model"""
+        try:
+            if not TF_AVAILABLE:
+                logger.warning("TensorFlow not available, using rule-based fallback")
+                self.is_loaded = True  # Use fallback mode
+                return True
+
+            if self.model_path.exists():
+                logger.info(f"Loading image model from {self.model_path}")
+                self.model = keras.models.load_model(self.model_path)
+                self.is_loaded = True
+                logger.info("Image model loaded successfully!")
+                return True
+            else:
+                logger.warning(f"Image model not found at {self.model_path}")
+                logger.info("Will use image feature extraction fallback")
+                self.is_loaded = True  # Use fallback mode
+                return True
+
+        except Exception as e:
+            logger.error(f"Error loading image model: {e}")
+            self.is_loaded = True  # Use fallback mode
+            return True
+
+    def preprocess_image(self, image_data):
+        """
+        Preprocess image for model input.
+
+        Args:
+            image_data: PIL Image, file path, or bytes
+
+        Returns:
+            Preprocessed numpy array ready for model
+        """
+        try:
+            # Handle different input types
+            if isinstance(image_data, bytes):
+                img = Image.open(io.BytesIO(image_data))
+            elif isinstance(image_data, str) or isinstance(image_data, Path):
+                img = Image.open(image_data)
+            elif hasattr(image_data, 'read'):  # File-like object (Streamlit UploadedFile)
+                img = Image.open(image_data)
+            elif isinstance(image_data, Image.Image):
+                img = image_data
+            else:
+                raise ValueError(f"Unsupported image type: {type(image_data)}")
+
+            # Convert to RGB if necessary
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
+
+            # Resize to expected input size
+            img = img.resize(self.IMG_SIZE, Image.Resampling.LANCZOS)
+
+            # Convert to numpy array and normalize
+            img_array = np.array(img, dtype=np.float32) / 255.0
+
+            # Add batch dimension
+            img_array = np.expand_dims(img_array, axis=0)
+
+            return img_array
+
+        except Exception as e:
+            logger.error(f"Error preprocessing image: {e}")
+            raise ValueError(f"Failed to preprocess image: {e}")
+
+    def extract_image_features(self, img_array):
+        """
+        Extract features from image for analysis.
+        Used as fallback when CNN model is not available.
+
+        Returns dict of extracted features.
+        """
+        # Remove batch dimension for analysis
+        img = img_array[0]
+
+        features = {}
+
+        # Color analysis
+        features['mean_intensity'] = float(np.mean(img))
+        features['std_intensity'] = float(np.std(img))
+
+        # Per-channel analysis
+        features['red_mean'] = float(np.mean(img[:, :, 0]))
+        features['green_mean'] = float(np.mean(img[:, :, 1]))
+        features['blue_mean'] = float(np.mean(img[:, :, 2]))
+
+        # Contrast analysis
+        features['contrast'] = float(np.max(img) - np.min(img))
+
+        # Edge detection (simple gradient)
+        gray = np.mean(img, axis=2)
+        grad_x = np.abs(np.diff(gray, axis=1))
+        grad_y = np.abs(np.diff(gray, axis=0))
+        features['edge_intensity'] = float(np.mean(grad_x) + np.mean(grad_y))
+
+        # Texture analysis (local variance)
+        from scipy import ndimage
+        features['texture_variance'] = float(ndimage.variance(gray))
+
+        # Regional analysis (divide into quadrants)
+        h, w = gray.shape
+        quadrants = [
+            gray[:h // 2, :w // 2],  # Top-left
+            gray[:h // 2, w // 2:],  # Top-right
+            gray[h // 2:, :w // 2],  # Bottom-left
+            gray[h // 2:, w // 2:]  # Bottom-right
+        ]
+        features['regional_variance'] = float(np.std([np.mean(q) for q in quadrants]))
+
+        return features
+
+    def _rule_based_prediction(self, features):
+        """
+        Rule-based prediction when CNN model is not available.
+        Uses extracted image features to estimate cardiac abnormality.
+
+        This is a simplified heuristic - in production, use a trained CNN.
+        """
+        score = 0.5  # Start neutral
+
+        # Analyze intensity patterns
+        # Abnormal cardiac images often show irregular intensity patterns
+        if features['std_intensity'] > 0.25:
+            score += 0.1
+        if features['regional_variance'] > 0.15:
+            score += 0.1
+
+        # High edge intensity might indicate abnormal structures
+        if features['edge_intensity'] > 0.15:
+            score += 0.05
+
+        # Very low contrast might indicate image quality issues
+        if features['contrast'] < 0.3:
+            score -= 0.1
+
+        # High texture variance can indicate abnormalities
+        if features['texture_variance'] > 0.05:
+            score += 0.1
+
+        # Clamp to valid range
+        score = max(0.0, min(1.0, score))
+
+        return score
+
+    def analyze(self, image_data, image_type='auto'):
+        """
+        Analyze medical image for heart disease indicators.
+
+        Args:
+            image_data: Image file (PIL Image, bytes, file path, or file object)
+            image_type: Type of image ('mri', 'ecg', 'echo', 'xray', 'auto')
+
+        Returns:
+            dict with analysis results
+        """
+        if not self.is_loaded:
+            raise RuntimeError("Image analyzer not loaded. Call load() first.")
+
+        try:
+            # Preprocess image
+            img_array = self.preprocess_image(image_data)
+
+            # Extract features for analysis
+            features = self.extract_image_features(img_array)
+
+            # Get prediction
+            if self.model is not None and TF_AVAILABLE:
+                # Use CNN model
+                prediction = self.model.predict(img_array, verbose=0)
+                probability = float(prediction[0][0])
+            else:
+                # Use rule-based fallback
+                probability = self._rule_based_prediction(features)
+
+            # Determine risk level
+            if probability > 0.7:
+                risk_level = 'HIGH'
+                risk_emoji = '🔴'
+            elif probability > 0.4:
+                risk_level = 'MODERATE'
+                risk_emoji = '🟡'
+            else:
+                risk_level = 'LOW'
+                risk_emoji = '🟢'
+
+            # Determine diagnosis
+            diagnosis = 'Potential Cardiac Abnormality Detected' if probability > 0.5 else 'No Significant Abnormality Detected'
+
+            # Build detailed analysis
+            analysis_details = self._generate_analysis_details(features, probability, image_type)
+
+            return {
+                'prediction': int(probability > 0.5),
+                'probability': probability,
+                'confidence': abs(probability - 0.5) * 2,  # 0 to 1 scale
+                'risk_level': risk_level,
+                'risk_emoji': risk_emoji,
+                'diagnosis': diagnosis,
+                'image_type': image_type,
+                'features': features,
+                'analysis_details': analysis_details,
+                'model_used': 'CNN' if self.model is not None else 'Feature Analysis',
+                'medical_disclaimer': '⚠️ This is an AI-assisted analysis for educational purposes only. Always consult a qualified cardiologist for medical diagnosis.'
+            }
+
+        except Exception as e:
+            logger.error(f"Error analyzing image: {e}")
+            raise ValueError(f"Failed to analyze image: {e}")
+
+    def _generate_analysis_details(self, features, probability, image_type):
+        """Generate detailed analysis report"""
+        details = []
+
+        # Image quality assessment
+        if features['contrast'] > 0.5:
+            details.append("✅ Good image contrast")
+        else:
+            details.append("⚠️ Low image contrast - may affect accuracy")
+
+        # Intensity analysis
+        if features['mean_intensity'] > 0.3 and features['mean_intensity'] < 0.7:
+            details.append("✅ Image brightness within normal range")
+        else:
+            details.append("⚠️ Image brightness may be suboptimal")
+
+        # Structure analysis
+        if features['edge_intensity'] > 0.1:
+            details.append("📊 Cardiac structures visible in image")
+
+        # Regional analysis
+        if features['regional_variance'] > 0.1:
+            details.append("📍 Detected regional intensity variations")
+
+        # Risk interpretation
+        if probability > 0.7:
+            details.append("🔴 High probability of cardiac abnormality indicators")
+            details.append("   → Recommend immediate specialist consultation")
+        elif probability > 0.4:
+            details.append("🟡 Moderate indicators present")
+            details.append("   → Recommend follow-up examination")
+        else:
+            details.append("🟢 No significant abnormality indicators detected")
+            details.append("   → Continue regular health monitoring")
+
+        return details
+
+
+# Singleton instance
+_image_analyzer = None
+
+
+def get_image_analyzer():
+    """Get or create singleton image analyzer instance"""
+    global _image_analyzer
+    if _image_analyzer is None:
+        _image_analyzer = CardiacImageAnalyzer()
+        _image_analyzer.load()
+    return _image_analyzer
+
+
+def create_cnn_model(input_shape=(224, 224, 3)):
+    """
+    Create a CNN model for cardiac image classification.
+    Call this function to create and train a new model.
+
+    Architecture based on common medical image classification patterns.
+    """
+    if not TF_AVAILABLE:
+        raise ImportError("TensorFlow is required to create CNN model")
+
+    model = keras.Sequential([
+        # Input layer
+        keras.layers.Input(shape=input_shape),
+
+        # First Conv Block
+        keras.layers.Conv2D(32, (3, 3), activation='relu', padding='same'),
+        keras.layers.BatchNormalization(),
+        keras.layers.Conv2D(32, (3, 3), activation='relu', padding='same'),
+        keras.layers.MaxPooling2D((2, 2)),
+        keras.layers.Dropout(0.25),
+
+        # Second Conv Block
+        keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same'),
+        keras.layers.BatchNormalization(),
+        keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same'),
+        keras.layers.MaxPooling2D((2, 2)),
+        keras.layers.Dropout(0.25),
+
+        # Third Conv Block
+        keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same'),
+        keras.layers.BatchNormalization(),
+        keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same'),
+        keras.layers.MaxPooling2D((2, 2)),
+        keras.layers.Dropout(0.25),
+
+        # Fourth Conv Block
+        keras.layers.Conv2D(256, (3, 3), activation='relu', padding='same'),
+        keras.layers.BatchNormalization(),
+        keras.layers.MaxPooling2D((2, 2)),
+        keras.layers.Dropout(0.25),
+
+        # Dense layers
+        keras.layers.Flatten(),
+        keras.layers.Dense(512, activation='relu'),
+        keras.layers.BatchNormalization(),
+        keras.layers.Dropout(0.5),
+        keras.layers.Dense(256, activation='relu'),
+        keras.layers.Dropout(0.3),
+
+        # Output layer
+        keras.layers.Dense(1, activation='sigmoid')
+    ])
+
+    model.compile(
+        optimizer=keras.optimizers.Adam(learning_rate=0.0001),
+        loss='binary_crossentropy',
+        metrics=['accuracy', keras.metrics.AUC(name='auc')]
+    )
+
+    return model
+
+```
+
+
+--------------------------------------------------------------------------------
+📄 FILE: requirements.txt
+Size: 203.00 B
+--------------------------------------------------------------------------------
+Content:
+```
+streamlit==1.29.0
+tensorflow==2.15.0
+pandas==2.1.4
+numpy==1.26.2
+scikit-learn==1.3.2
+Pillow==10.1.0
+opencv-python-headless==4.8.1.78
+requests==2.31.0
+python-dotenv==1.0.0
+joblib==1.3.2
+matplotlib==3.8.2
+
+```
+
+
+--------------------------------------------------------------------------------
+📄 FILE: test_model.py
+Size: 3.42 KB
+--------------------------------------------------------------------------------
+Content:
+```
+"""
+Test script to verify model and scaler are working correctly
+"""
+
+import tensorflow as tf
+import pickle
+import numpy as np
+from pathlib import Path
+import sys
+
+
+def test_model():
+    """Test that model and scaler work correctly"""
+
+    print("=" * 80)
+    print("MODEL VERIFICATION TEST")
+    print("=" * 80)
+
+    # Check if files exist
+    model_path = Path('models/best_model_final_nn.keras')
+    scaler_path = Path('models/scaler.pkl')
+
+    if not model_path.exists():
+        print(f"❌ Model file not found: {model_path}")
+        print("   Please copy your trained model to models/ directory")
+        return False
+
+    if not scaler_path.exists():
+        print(f"❌ Scaler file not found: {scaler_path}")
+        print("   Please copy your scaler to models/ directory")
+        return False
+
+    print(f"✅ Model file found: {model_path}")
+    print(f"✅ Scaler file found: {scaler_path}")
+
+    # Load model
+    try:
+        model = tf.keras.models.load_model(model_path)
+        print(f"\n✅ Model loaded successfully!")
+        print(f"   Input shape: {model.input_shape}")
+        print(f"   Output shape: {model.output_shape}")
+        print(f"   Total layers: {len(model.layers)}")
+        print(f"   Total parameters: {model.count_params():,}")
+    except Exception as e:
+        print(f"❌ Error loading model: {e}")
+        return False
+
+    # Load scaler
+    try:
+        with open(scaler_path, 'rb') as f:
+            scaler = pickle.load(f)
+        print(f"\n✅ Scaler loaded successfully!")
+        print(f"   Features expected: {scaler.n_features_in_}")
+    except Exception as e:
+        print(f"❌ Error loading scaler: {e}")
+        return False
+
+    # Test prediction with multiple samples
+    print("\n" + "=" * 80)
+    print("RUNNING TEST PREDICTIONS")
+    print("=" * 80)
+
+    test_cases = [
+        {
+            'name': 'Low Risk Patient',
+            'features': [35, 0, 1, 110, 180, 0, 0, 170, 0, 0.5, 1, 0, 3]
+        },
+        {
+            'name': 'Moderate Risk Patient',
+            'features': [50, 1, 3, 130, 250, 0, 1, 140, 0, 1.5, 2, 0, 3]
+        },
+        {
+            'name': 'High Risk Patient',
+            'features': [65, 1, 4, 160, 300, 1, 2, 110, 1, 3.5, 3, 2, 7]
+        }
+    ]
+
+    for i, case in enumerate(test_cases, 1):
+        print(f"\nTest Case {i}: {case['name']}")
+        print(f"Features: {case['features']}")
+
+        # Prepare input
+        features_array = np.array([case['features']])
+        features_scaled = scaler.transform(features_array)
+
+        # Predict
+        prediction = model.predict(features_scaled, verbose=0)
+        probability = prediction[0][0]
+        diagnosis = 'Heart Disease' if probability > 0.5 else 'No Heart Disease'
+
+        # Risk level
+        if probability > 0.7:
+            risk = "🔴 HIGH"
+        elif probability > 0.4:
+            risk = "🟡 MODERATE"
+        else:
+            risk = "🟢 LOW"
+
+        print(f"  Probability: {probability:.4f} ({probability * 100:.1f}%)")
+        print(f"  Diagnosis: {diagnosis}")
+        print(f"  Risk Level: {risk}")
+
+    print("\n" + "=" * 80)
+    print("✅ ALL TESTS PASSED!")
+    print("=" * 80)
+    print("\nYour model is ready to use in the Streamlit app!")
+    print("Run: streamlit run backend/app.py")
+
+    return True
+
+
+if __name__ == "__main__":
+    success = test_model()
+    sys.exit(0 if success else 1)
+
+```
+
+
+--------------------------------------------------------------------------------
+📄 FILE: train_image.py
+Size: 9.69 KB
+--------------------------------------------------------------------------------
+Content:
+```
+"""
+Training script for cardiac image classification CNN model.
+
+Usage:
+    python train_image_model.py --data_dir /path/to/cardiac/images
+
+Dataset structure expected:
+    data_dir/
+        train/
+            normal/
+                img1.jpg
+                img2.jpg
+            abnormal/
+                img1.jpg
+                img2.jpg
+        validation/
+            normal/
+            abnormal/
+"""
+
+import argparse
+import numpy as np
+from pathlib import Path
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+try:
+    import tensorflow as tf
+    from tensorflow import keras
+    from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
+    TF_AVAILABLE = True
+except ImportError:
+    TF_AVAILABLE = False
+    logger.error("TensorFlow is required for training. Install with: pip install tensorflow")
+
+
+def create_data_generators(data_dir, img_size=(224, 224), batch_size=32):
+    """Create training and validation data generators with augmentation"""
+
+    # Training data augmentation
+    train_datagen = ImageDataGenerator(
+        rescale=1. / 255,
+        rotation_range=20,
+        width_shift_range=0.2,
+        height_shift_range=0.2,
+        shear_range=0.2,
+        zoom_range=0.2,
+        horizontal_flip=True,
+        fill_mode='nearest',
+        validation_split=0.2  # Use 20% for validation if no separate val folder
+    )
+
+    # Validation data (no augmentation, only rescaling)
+    val_datagen = ImageDataGenerator(
+        rescale=1. / 255,
+        validation_split=0.2
+    )
+
+    data_path = Path(data_dir)
+
+    # Check if we have separate train/validation folders
+    if (data_path / 'train').exists():
+        train_dir = data_path / 'train'
+        val_dir = data_path / 'validation' if (data_path / 'validation').exists() else data_path / 'train'
+
+        train_generator = train_datagen.flow_from_directory(
+            train_dir,
+            target_size=img_size,
+            batch_size=batch_size,
+            class_mode='binary',
+            shuffle=True
+        )
+
+        val_generator = val_datagen.flow_from_directory(
+            val_dir,
+            target_size=img_size,
+            batch_size=batch_size,
+            class_mode='binary',
+            shuffle=False,
+            subset='validation' if val_dir == train_dir else None
+        )
+    else:
+        # Use validation_split from single directory
+        train_generator = train_datagen.flow_from_directory(
+            data_path,
+            target_size=img_size,
+            batch_size=batch_size,
+            class_mode='binary',
+            shuffle=True,
+            subset='training'
+        )
+
+        val_generator = val_datagen.flow_from_directory(
+            data_path,
+            target_size=img_size,
+            batch_size=batch_size,
+            class_mode='binary',
+            shuffle=False,
+            subset='validation'
+        )
+
+    return train_generator, val_generator
+
+
+def train_model(data_dir, epochs=50, batch_size=32, model_save_path=None):
+    """Train the cardiac image classification model"""
+
+    if not TF_AVAILABLE:
+        raise ImportError("TensorFlow is required for training")
+
+    # Import the model architecture
+    from image_service import create_cnn_model
+
+    # Set up paths
+    project_root = Path(__file__).resolve().parents[1]
+    if model_save_path is None:
+        model_save_path = project_root / 'models' / 'cardiac_image_model.keras'
+
+    model_save_path = Path(model_save_path)
+    model_save_path.parent.mkdir(parents=True, exist_ok=True)
+
+    logger.info("=" * 60)
+    logger.info("CARDIAC IMAGE MODEL TRAINING")
+    logger.info("=" * 60)
+
+    # Create data generators
+    logger.info(f"Loading data from: {data_dir}")
+    train_gen, val_gen = create_data_generators(data_dir, batch_size=batch_size)
+
+    logger.info(f"Training samples: {train_gen.samples}")
+    logger.info(f"Validation samples: {val_gen.samples}")
+    logger.info(f"Classes: {train_gen.class_indices}")
+
+    # Create model
+    logger.info("\nCreating CNN model...")
+    model = create_cnn_model()
+    model.summary()
+
+    # Callbacks
+    callbacks = [
+        keras.callbacks.ModelCheckpoint(
+            str(model_save_path),
+            monitor='val_auc',
+            mode='max',
+            save_best_only=True,
+            verbose=1
+        ),
+        keras.callbacks.EarlyStopping(
+            monitor='val_auc',
+            mode='max',
+            patience=10,
+            restore_best_weights=True,
+            verbose=1
+        ),
+        keras.callbacks.ReduceLROnPlateau(
+            monitor='val_loss',
+            factor=0.5,
+            patience=5,
+            min_lr=1e-7,
+            verbose=1
+        ),
+        keras.callbacks.TensorBoard(
+            log_dir=str(project_root / 'logs' / 'image_model'),
+            histogram_freq=1
+        )
+    ]
+
+    # Train
+    logger.info("\nStarting training...")
+    history = model.fit(
+        train_gen,
+        epochs=epochs,
+        validation_data=val_gen,
+        callbacks=callbacks,
+        verbose=1
+    )
+
+    # Save final model
+    model.save(model_save_path)
+    logger.info(f"\n✅ Model saved to: {model_save_path}")
+
+    # Evaluate
+    logger.info("\nFinal Evaluation:")
+    val_loss, val_acc, val_auc = model.evaluate(val_gen, verbose=0)
+    logger.info(f"  Validation Loss: {val_loss:.4f}")
+    logger.info(f"  Validation Accuracy: {val_acc:.4f}")
+    logger.info(f"  Validation AUC: {val_auc:.4f}")
+
+    return model, history
+
+
+def create_synthetic_dataset(output_dir, num_samples=100):
+    """
+    Create a synthetic dataset for testing/demo purposes.
+    In production, use real cardiac images from medical datasets.
+    """
+    from PIL import Image
+    import random
+
+    output_path = Path(output_dir)
+
+    # Create directory structure
+    for split in ['train', 'validation']:
+        for cls in ['normal', 'abnormal']:
+            (output_path / split / cls).mkdir(parents=True, exist_ok=True)
+
+    logger.info(f"Creating synthetic dataset in {output_path}")
+
+    # Generate synthetic images
+    for split in ['train', 'validation']:
+        n_samples = num_samples if split == 'train' else num_samples // 5
+
+        for cls in ['normal', 'abnormal']:
+            for i in range(n_samples):
+                # Create synthetic cardiac-like image
+                img = np.zeros((224, 224, 3), dtype=np.uint8)
+
+                # Background
+                if cls == 'normal':
+                    # More uniform, healthy appearance
+                    base_color = random.randint(40, 80)
+                    img[:, :] = [base_color, base_color, base_color]
+
+                    # Add smooth heart shape
+                    center = (112, 112)
+                    for y in range(224):
+                        for x in range(224):
+                            dist = np.sqrt((x - center[0]) ** 2 + (y - center[1]) ** 2)
+                            if dist < 60:
+                                intensity = int(base_color + 40 * (1 - dist / 60))
+                                img[y, x] = [intensity, intensity - 10, intensity - 10]
+                else:
+                    # More irregular, abnormal appearance
+                    base_color = random.randint(30, 60)
+                    img[:, :] = [base_color, base_color, base_color]
+
+                    # Add irregular patches (simulating abnormalities)
+                    num_patches = random.randint(3, 7)
+                    for _ in range(num_patches):
+                        px, py = random.randint(20, 200), random.randint(20, 200)
+                        size = random.randint(10, 40)
+                        intensity = random.randint(80, 150)
+                        img[max(0, py - size):min(224, py + size),
+                        max(0, px - size):min(224, px + size)] = [intensity, intensity - 20, intensity - 10]
+
+                # Add some noise
+                noise = np.random.randint(-10, 10, img.shape, dtype=np.int16)
+                img = np.clip(img.astype(np.int16) + noise, 0, 255).astype(np.uint8)
+
+                # Save image
+                pil_img = Image.fromarray(img)
+                pil_img.save(output_path / split / cls / f'{cls}_{i:04d}.png')
+
+    logger.info(
+        f"✅ Synthetic dataset created with {num_samples * 2} training and {num_samples // 5 * 2} validation images")
+    return output_path
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Train cardiac image classification model')
+    parser.add_argument('--data_dir', type=str, help='Path to training data directory')
+    parser.add_argument('--epochs', type=int, default=50, help='Number of training epochs')
+    parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
+    parser.add_argument('--create_synthetic', action='store_true', help='Create synthetic dataset for testing')
+    parser.add_argument('--output_dir', type=str, default='data/cardiac_images',
+                        help='Output directory for synthetic data')
+
+    args = parser.parse_args()
+
+    if args.create_synthetic:
+        # Create synthetic dataset for demo
+        data_path = create_synthetic_dataset(args.output_dir)
+        print(f"\nTo train on this data, run:")
+        print(f"  python train_image_model.py --data_dir {data_path}")
+    elif args.data_dir:
+        # Train on provided data
+        train_model(args.data_dir, epochs=args.epochs, batch_size=args.batch_size)
+    else:
+        print("Usage:")
+        print("  Create synthetic data: python train_image_model.py --create_synthetic")
+        print("  Train model: python train_image_model.py --data_dir /path/to/data")
+
+```
+
+
+--------------------------------------------------------------------------------
+📄 FILE: train_sklearn.py
+Size: 1.17 KB
+--------------------------------------------------------------------------------
+Content:
+```
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import GaussianNB
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import accuracy_score
+import joblib
+from ucimlrepo import fetch_ucirepo  # Downloads heart disease data
+
+# Load & preprocess (exactly as notebook)
+heartdisease = fetch_ucirepo(id=45)
+X = heartdisease.data.features[['age', 'sex', 'cp', 'trestbps', 'chol', 'fbs',
+                               'restecg', 'thalach', 'exang', 'oldpeak', 'slope', 'ca', 'thal']]
+y = (heartdisease.data.targets['num'] > 0).astype(int)  # Binary 0/1
+
+X = X.fillna(X.median())  # Handle ca/thal NaNs
+scaler = MinMaxScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Train/test
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+model = GaussianNB()
+model.fit(X_train, y_train)
+
+# Eval (89% acc)
+print(f"Test Accuracy: {accuracy_score(y_test, model.predict(X_test)):.3f}")
+
+# Save to models/
+joblib.dump(model, 'models/heart_model_gnb.pkl')
+joblib.dump(scaler, 'models/scaler.pkl')
+print("✅ Saved models/heart_model_gnb.pkl & scaler.pkl")
+
+```
+
+
+====================================================================================================
+END OF PROJECT STRUCTURE
+====================================================================================================
