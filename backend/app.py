@@ -7,24 +7,32 @@ import sys
 import os
 from pathlib import Path
 
-# Add backend to path - Works for both local and Streamlit Cloud
+# Page config first
+st.set_page_config(page_title="HeartGuard AI", page_icon="❤️", layout="wide")
+
+# Add backend to path
 backend_dir = Path(__file__).resolve().parent
 project_root = backend_dir.parent
 sys.path.insert(0, str(backend_dir))
 
-# Change working directory to project root for model loading
-os.chdir(project_root)
+# Try to change directory (safe if fails)
+try:
+    os.chdir(project_root)
+except Exception:
+    pass
 
-# Import after path is set
+# Import after path is set - with proper error handling
 try:
     from model_service import get_predictor, HeartDiseasePredictor
     import logging
 except ImportError as e:
-    st.error(f"Import error: {e}")
+    st.error(f"❌ Import error: {e}")
+    st.error("Make sure all backend files are present in the models/ directory")
     st.stop()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 
 def init_session_state():

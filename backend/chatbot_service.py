@@ -9,7 +9,12 @@ import streamlit as st
 from typing import Dict, List, Tuple
 from dotenv import load_dotenv
 
-load_dotenv()
+# Try to load .env for local development
+try:
+    load_dotenv()
+except:
+    pass
+
 
 
 class MedicalChatbot:
@@ -33,34 +38,65 @@ class MedicalChatbot:
 
     def __init__(self):
         """Initialize the chatbot with Cerebras API"""
-        # Try Streamlit secrets first, then fall back to .env
+
+        # Try multiple sources for API key
         api_key = None
 
+        # Source 1: Try Streamlit secrets (Cloud deployment)
         try:
-            # For Streamlit Cloud deployment
-            api_key = st.secrets["CEREBRAS_API_KEY"]
-        except:
-            # For local development
-            from dotenv import load_dotenv
-            load_dotenv()
+            api_key = st.secrets.get("CEREBRAS_API_KEY")
+        except Exception as e:
+            print(f"Note: Could not access st.secrets: {e}")
+            pass
+
+        # Source 2: Try environment variable (.env file for local development)
+        if not api_key:
             api_key = os.getenv('CEREBRAS_API_KEY')
 
+        # Source 3: Fallback error if nothing found
         if not api_key:
-            raise ValueError("CEREBRAS_API_KEY not found. Add it to Streamlit secrets or .env file")
+            error_msg = (
+                "❌ CEREBRAS_API_KEY not found!\n\n"
+                "For Streamlit Cloud deployment:\n"
+                "  1. Go to app Settings → Secrets\n"
+                "  2. Add: CEREBRAS_API_KEY = your_key_here\n\n"
+                "For local development:\n"
+                "  1. Create .env file in project root\n"
+                "  2. Add: CEREBRAS_API_KEY=your_key_here\n"
+            )
+            raise ValueError(error_msg)
 
+        print(f"✅ CEREBRAS_API_KEY loaded successfully")
+
+        # Initialize Cerebras client
         try:
             from cerebras.cloud.sdk import Cerebras
+            print("🔄 Initializing Cerebras client...")
             self.client = Cerebras(api_key=api_key)
+            print("✅ Cerebras client initialized")
+
         except TypeError as e:
+            # Handle case where SDK has issues with proxies or kwargs
             if 'proxies' in str(e) or 'unexpected keyword argument' in str(e):
+                print("⚠️ SDK TypeError detected, using alternative initialization...")
                 import httpx
                 from cerebras.cloud.sdk import Cerebras
+
+                # Create clean httpx client without proxy settings
                 http_client = httpx.Client(timeout=60.0)
                 self.client = Cerebras(api_key=api_key, http_client=http_client)
+                print("✅ Cerebras client initialized (alternative method)")
             else:
                 raise e
 
+        except Exception as e:
+            error_msg = f"❌ Failed to initialize Cerebras client: {e}"
+            print(error_msg)
+            raise Exception(error_msg)
+
+        # Set model
         self.model = "llama-3.3-70b"
+        print(f"✅ Model set to: {self.model}")
 
     def create_system_prompt(self, collected_features: Dict) -> str:
         """Dynamic system prompt based on collected features"""
